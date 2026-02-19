@@ -5,56 +5,52 @@ public class GunBob : MonoBehaviour
     [Header("References")]
     public PlayerMovement playerMovement;
 
-    [Header("Walk Bob - Half Life Style")]
-    public float bobFrequency = 6f;
-    public float bobAmountZ = 0.015f;   // Adelante-atrás (péndulo)
-    public float bobAmountX = 0.005f;   // Lateral sutil
-
-    [Header("Side Tilt")]
-    public float tiltAmount = 2f;
-    public float tiltSmooth = 6f;
-
-    [Header("Smooth")]
+    [Header("Bob Settings")]
+    public float bobAmount = 0.1f;
+    public float bobSpeed = 8f;
     public float bobSmooth = 6f;
 
-    // Private
-    private float bobTimer = 0f;
+    private float bobCycle = 0f;
     private Vector3 originPos;
-    private Quaternion originRot;
-    private float currentTilt = 0f;
+    private Rigidbody playerRb;
 
     void Start()
     {
         originPos = transform.localPosition;
-        originRot = transform.localRotation;
+
+        if (playerMovement != null)
+            playerRb = playerMovement.GetComponent<Rigidbody>();
     }
 
     void Update()
     {
-        if (playerMovement == null) return;
+        if (playerMovement == null || playerRb == null) return;
 
-        WalkBob();
-        SideTilt();
+        HalfLifeBob();
     }
 
-    private void WalkBob()
+    private void HalfLifeBob()
     {
         Vector3 targetPos = originPos;
 
         if (playerMovement.IsMoving())
         {
-            bobTimer += Time.deltaTime * bobFrequency;
+            float speed = new Vector2(
+                playerRb.linearVelocity.x,
+                playerRb.linearVelocity.z
+            ).magnitude;
 
-            // Péndulo adelante-atrás en Z
-            float bobZ = Mathf.Sin(bobTimer) * bobAmountZ;
-            // Lateral sutil en X (mitad de frecuencia)
-            float bobX = Mathf.Cos(bobTimer * 0.5f) * bobAmountX;
+            float normalizedSpeed = Mathf.Clamp01(speed / playerMovement.maxSpeed);
 
-            targetPos = originPos + new Vector3(bobX, 0, bobZ);
+            bobCycle += Time.deltaTime * bobSpeed;
+
+            float bob = normalizedSpeed * bobAmount * Mathf.Sin(bobCycle);
+
+            targetPos = originPos + new Vector3(0, 0, bob);
         }
         else
         {
-            bobTimer = 0f;
+            bobCycle = 0f;
         }
 
         transform.localPosition = Vector3.Lerp(
@@ -62,25 +58,5 @@ public class GunBob : MonoBehaviour
             targetPos,
             Time.deltaTime * bobSmooth
         );
-    }
-
-    private void SideTilt()
-    {
-        float targetTilt = 0f;
-
-        if (playerMovement.IsMoving())
-        {
-            Vector2 vel = playerMovement.FindVelRelativeToLook();
-            targetTilt = -vel.x / playerMovement.maxSpeed * tiltAmount;
-        }
-
-        currentTilt = Mathf.Lerp(
-            currentTilt,
-            targetTilt,
-            Time.deltaTime * tiltSmooth
-        );
-
-        // Tilt sobre rotación original
-        transform.localRotation = originRot * Quaternion.Euler(0, 0, currentTilt);
     }
 }

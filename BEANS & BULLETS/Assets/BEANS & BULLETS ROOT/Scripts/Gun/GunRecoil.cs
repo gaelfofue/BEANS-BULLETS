@@ -3,46 +3,44 @@ using UnityEngine;
 public class GunRecoil : MonoBehaviour
 {
     [Header("Recoil")]
-    public float recoilUp = 0.05f;      // Ahora es posición, no rotación
-    public float recoilBack = 0.02f;    // Retroceso hacia atrás
+    public float recoilKick = 5f;
     public float recoilSnap = 20f;
     public float recoilReturn = 10f;
 
     [Header("Reload Spin")]
+    public float spinSpeedMultiplier = 2f;  // 1 = una vuelta en el tiempo de recarga
+                                            // 2 = el doble de rápido
+                                            // 3 = el triple, etc.
     private bool isSpinning = false;
     private float spinProgress = 0f;
     private float spinSpeed = 360f;
 
     // State
-    private Vector3 currentPosRecoil;
-    private Vector3 targetPosRecoil;
+    private float currentRecoil;
+    private float targetRecoil;
 
-    // Guardar transform original
-    private Vector3 originPos;
+    // Original
     private Quaternion originRot;
 
     void Start()
     {
-        originPos = transform.localPosition;
         originRot = transform.localRotation;
     }
 
     void Update()
     {
-        // Posición recoil vuelve a 0
-        targetPosRecoil = Vector3.Lerp(
-            targetPosRecoil,
-            Vector3.zero,
+        targetRecoil = Mathf.Lerp(
+            targetRecoil,
+            0f,
             Time.deltaTime * recoilReturn
         );
 
-        currentPosRecoil = Vector3.Lerp(
-            currentPosRecoil,
-            targetPosRecoil,
+        currentRecoil = Mathf.Lerp(
+            currentRecoil,
+            targetRecoil,
             Time.deltaTime * recoilSnap
         );
 
-        // Spin reload
         if (isSpinning)
         {
             spinProgress += Time.deltaTime * spinSpeed;
@@ -51,35 +49,32 @@ public class GunRecoil : MonoBehaviour
             {
                 isSpinning = false;
                 spinProgress = 0f;
-                transform.localRotation = originRot;
-                transform.localPosition = originPos + currentPosRecoil;
-                return;
             }
+        }
 
-            // Rotar sobre el eje FORWARD del arma (su propio eje)
-            transform.localRotation = originRot * Quaternion.AngleAxis(spinProgress, Vector3.forward);
-            transform.localPosition = originPos + currentPosRecoil;
+        Quaternion kickRot = Quaternion.AngleAxis(-currentRecoil, Vector3.up);
+
+        if (isSpinning)
+        {
+            Quaternion spinRot = Quaternion.AngleAxis(spinProgress, Vector3.down);
+            transform.localRotation = originRot * kickRot * spinRot;
         }
         else
         {
-            // Sin spin, solo aplicar recoil de posición
-            transform.localPosition = originPos + currentPosRecoil;
-            transform.localRotation = originRot;
+            transform.localRotation = originRot * kickRot;
         }
     }
 
     public void DoRecoil()
     {
-        // Recoil como MOVIMIENTO: sube y retrocede
-        targetPosRecoil += new Vector3(0, recoilUp, -recoilBack);
+        targetRecoil += recoilKick;
     }
 
     public void DoReloadSpin(float reloadTime)
     {
         if (isSpinning) return;
-
         isSpinning = true;
         spinProgress = 0f;
-        spinSpeed = 360f / reloadTime;
+        spinSpeed = (360f / reloadTime) * spinSpeedMultiplier;
     }
 }
