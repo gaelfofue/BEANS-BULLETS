@@ -4,14 +4,14 @@ using UnityEngine.UI;
 public class CrosshairUI : MonoBehaviour
 {
     [Header("Crosshair")]
-    public Image crosshair;
+    public RawImage crosshair;        // Cambiado a RawImage
     public float normalSize = 20f;
-    public float shootSize = 30f;      // Se agranda al disparar
+    public float shootSize = 30f;
     public float shrinkSpeed = 8f;
 
     [Header("Hitmarker")]
-    public Image hitmarker;
-    public float hitmarkerDuration = 0.1f;
+    public RawImage hitmarker;         // Cambiado a RawImage
+    public float hitmarkerDuration = 0.15f;
     private float hitmarkerTimer = 0f;
 
     // Private
@@ -31,7 +31,9 @@ public class CrosshairUI : MonoBehaviour
         // Crosshair vuelve a tamaño normal
         Vector2 current = crosshairRect.sizeDelta;
         Vector2 target = new Vector2(normalSize, normalSize);
-        crosshairRect.sizeDelta = Vector2.Lerp(current, target, Time.deltaTime * shrinkSpeed);
+        crosshairRect.sizeDelta = Vector2.Lerp(
+            current, target, Time.deltaTime * shrinkSpeed
+        );
 
         // Hitmarker timer
         if (hitmarkerTimer > 0)
@@ -44,13 +46,11 @@ public class CrosshairUI : MonoBehaviour
         }
     }
 
-    // Llamar al disparar
     public void OnShoot()
     {
         crosshairRect.sizeDelta = new Vector2(shootSize, shootSize);
     }
 
-    // Llamar al acertar a un enemigo
     public void OnHit()
     {
         if (hitmarker == null) return;
