@@ -35,6 +35,12 @@ public class GunSystem : MonoBehaviour
     public GameObject hitEffect;
     public GameObject enemyHitEffect;
 
+    [Header("Feel")]
+    public GunRecoil gunRecoil;
+
+    [Header("UI")]
+    public CrosshairUI crosshairUI;
+
     // Input
     private bool holdingShoot;
     private bool readyToShoot = true;
@@ -149,6 +155,14 @@ public class GunSystem : MonoBehaviour
             Destroy(flash, 0.1f);
         }
 
+        // Recoil
+        if (gunRecoil != null)
+            gunRecoil.DoRecoil();
+
+        // Crosshair feedback
+        if (crosshairUI != null)
+            crosshairUI.OnShoot();
+
         if (fireMode != FireMode.Charge)
         {
             bulletsLeft--;
@@ -196,6 +210,10 @@ public class GunSystem : MonoBehaviour
         isCharging = false;
         currentCharge = 0f;
 
+        // Spin
+        if (gunRecoil != null)
+            gunRecoil.DoReloadSpin(reloadTime);
+
         Invoke(nameof(ReloadFinished), reloadTime);
     }
 
@@ -229,6 +247,10 @@ public class GunSystem : MonoBehaviour
             if (enemy != null)
             {
                 enemy.TakeDamage(finalDamage);
+
+                // Hitmarker
+                if (crosshairUI != null)
+                    crosshairUI.OnHit();
 
                 if (enemyHitEffect != null)
                 {

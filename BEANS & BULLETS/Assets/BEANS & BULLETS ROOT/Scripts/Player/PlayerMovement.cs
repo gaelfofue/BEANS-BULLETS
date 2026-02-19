@@ -46,6 +46,11 @@ public class PlayerMovement : MonoBehaviour
         Movement();
     }
 
+    public Vector2 GetMoveInput()
+    {
+        return moveInput;
+    }
+
     #region INPUT EVENTS
     public void OnMove(InputAction.CallbackContext context)
     {
