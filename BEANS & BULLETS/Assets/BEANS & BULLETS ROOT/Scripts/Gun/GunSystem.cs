@@ -252,6 +252,10 @@ public class GunSystem : MonoBehaviour
                 if (crosshairUI != null)
                     crosshairUI.OnHit();
 
+                // Tiempo por hit
+                if (GameTimer.Instance != null)
+                    GameTimer.Instance.AddHitTime();
+
                 if (enemyHitEffect != null)
                 {
                     GameObject effect = Instantiate(

@@ -28,20 +28,16 @@ public class EnemyHealth : MonoBehaviour
 
     private void Die()
     {
-        // Partículas de muerte
         if (deathEffect != null)
         {
             Instantiate(deathEffect, transform.position, Quaternion.identity);
         }
 
-        // Dar tiempo al player (futuro)
-        // if (GameTimer.Instance != null)
-        //     GameTimer.Instance.AddTime();
-
-        // Avisar a la room (futuro)
-        // RoomManager room = FindObjectOfType<RoomManager>();
-        // if (room != null)
-        //     room.EnemyKilled();
+        // Dar tiempo por kill
+        if (GameTimer.Instance != null)
+        {
+            GameTimer.Instance.AddKillTime();
+        }
 
         Destroy(gameObject);
     }
