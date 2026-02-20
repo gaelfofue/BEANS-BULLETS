@@ -13,7 +13,7 @@ public class GunRecoil : MonoBehaviour
                                             // 3 = el triple, etc.
     private bool isSpinning = false;
     private float spinProgress = 0f;
-    private float spinSpeed = 360f;
+    private float spinSpeed = 900f;
 
     // State
     private float currentRecoil;
@@ -45,7 +45,7 @@ public class GunRecoil : MonoBehaviour
         {
             spinProgress += Time.deltaTime * spinSpeed;
 
-            if (spinProgress >= 360f)
+            if (spinProgress >= 900f)
             {
                 isSpinning = false;
                 spinProgress = 0f;
@@ -75,6 +75,6 @@ public class GunRecoil : MonoBehaviour
         if (isSpinning) return;
         isSpinning = true;
         spinProgress = 0f;
-        spinSpeed = (360f / reloadTime) * spinSpeedMultiplier;
+        spinSpeed = (900f / reloadTime) * spinSpeedMultiplier;
     }
 }
