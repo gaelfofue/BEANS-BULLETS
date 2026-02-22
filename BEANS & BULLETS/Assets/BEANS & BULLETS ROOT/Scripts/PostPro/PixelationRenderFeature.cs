@@ -1,68 +1,68 @@
-// RetroLightingSetup.cs
-// Adjuntar a un GO vacío. Ejecutar desde Context Menu para configurar la escena.
+// PixelationRenderFeature.cs
 
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
-public class RetroLightingSetup : MonoBehaviour
+public class PixelationRenderFeature : ScriptableRendererFeature
 {
-    [Header("ILUMINACIÓN RETRO")]
-    [SerializeField] private Color ambientColor = new Color(0.03f, 0.05f, 0.08f);
-
-    [Header("Paleta de Luces (Neón)")]
-    [SerializeField]
-    private Color[] lightPalette = new Color[]
+    [System.Serializable]
+    public class Settings
     {
-        new Color(0.2f, 1f, 0.6f),    // Verde terminal
-        new Color(1f, 0.3f, 0.2f),     // Rojo alarma
-        new Color(0.3f, 0.5f, 1f),     // Azul frío
-        new Color(1f, 0.8f, 0.2f),     // Amarillo advertencia
-        new Color(0.8f, 0.2f, 1f),     // Púrpura
-    };
-
-    [ContextMenu("Apply Retro Ambient")]
-    public void ApplyAmbient()
-    {
-        // Eliminar luz direccional
-        Light[] allLights = FindObjectsOfType<Light>();
-        foreach (Light l in allLights)
-        {
-            if (l.type == LightType.Directional)
-            {
-                l.gameObject.SetActive(false);
-                Debug.Log($"Desactivada luz direccional: {l.name}");
-            }
-        }
-
-        // Configurar ambiente
-        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        RenderSettings.ambientLight = ambientColor;
-        RenderSettings.fog = true;
-        RenderSettings.fogMode = FogMode.Exponential;
-        RenderSettings.fogColor = new Color(0.02f, 0.02f, 0.05f);
-        RenderSettings.fogDensity = 0.04f;
-
-        Debug.Log("Iluminación retro aplicada. Skybox = negro, fog = oscuro.");
+        public RenderPassEvent renderPassEvent = RenderPassEvent.AfterRenderingOpaques;
+        [Range(1, 8)] public int downscaleFactor = 3;
+        // 1 = sin efecto, 2 = mitad res, 3 = un tercio, etc.
     }
 
-    [ContextMenu("Spawn Test Lights")]
-    public void SpawnTestLights()
+    public Settings settings = new Settings();
+    private PixelationPass pass;
+
+    public override void Create()
     {
-        GameObject parent = new GameObject("RETRO LIGHTS");
+        pass = new PixelationPass(settings);
+    }
 
-        for (int i = 0; i < lightPalette.Length; i++)
+    public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
+    {
+        renderer.EnqueuePass(pass);
+    }
+
+    private class PixelationPass : ScriptableRenderPass
+    {
+        private int downscale;
+        private RTHandle lowResRT;
+
+        public PixelationPass(Settings settings)
         {
-            GameObject lightGO = new GameObject($"RetroLight_{i}");
-            lightGO.transform.parent = parent.transform;
-            lightGO.transform.position = new Vector3(i * 5f, 3f, 0f);
+            this.downscale = settings.downscaleFactor;
+            this.renderPassEvent = settings.renderPassEvent;
+        }
 
-            Light light = lightGO.AddComponent<Light>();
-            light.type = LightType.Point;
-            light.color = lightPalette[i];
-            light.intensity = 3f;
-            light.range = 12f;
-            light.shadows = LightShadows.Hard; // Sombras duras = retro
+        public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
+        {
+            var desc = renderingData.cameraData.cameraTargetDescriptor;
+            desc.width /= downscale;
+            desc.height /= downscale;
+            desc.depthBufferBits = 0;
 
-            Debug.Log($"Luz creada: {lightGO.name} - Color: {lightPalette[i]}");
+            RenderingUtils.ReAllocateIfNeeded(ref lowResRT, desc,
+                FilterMode.Point, // CRUCIAL: Point filtering = pixeles duros
+                name: "_LowResRT");
+        }
+
+        public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
+        {
+            CommandBuffer cmd = CommandBufferPool.Get("Pixelation");
+
+            RTHandle source = renderingData.cameraData.renderer.cameraColorTargetHandle;
+
+            // Baja resolución
+            Blit(cmd, source, lowResRT);
+            // Vuelta a resolución original (con Point filter = pixeles)
+            Blit(cmd, lowResRT, source);
+
+            context.ExecuteCommandBuffer(cmd);
+            CommandBufferPool.Release(cmd);
         }
     }
 }
