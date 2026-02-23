@@ -74,7 +74,17 @@ public class GameTimer : MonoBehaviour
 
     public void ResumeTimer()
     {
+        if (isDead) return;
         isRunning = true;
+    }
+
+    // Nuevo método que usa Room.cs
+    public void SetPaused(bool paused)
+    {
+        if (isDead) return;
+
+        isRunning = !paused;
+        Debug.Log($"Timer {(paused ? "PAUSADO" : "ACTIVO")}");
     }
 
     #endregion
