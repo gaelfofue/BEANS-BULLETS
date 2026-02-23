@@ -32,9 +32,20 @@ public class Room : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (roomActivated) return;
-        if (!other.CompareTag("Player")) return;
+        Debug.Log($"Trigger tocado por: {other.gameObject.name} | Tag: {other.tag}");
 
+        if (roomActivated)
+        {
+            Debug.Log("Sala ya activada, ignorando");
+            return;
+        }
+        if (!other.CompareTag("Player"))
+        {
+            Debug.Log("No es el Player, ignorando");
+            return;
+        }
+
+        Debug.Log("ACTIVANDO SALA");
         ActivateRoom();
     }
 
@@ -140,8 +151,7 @@ public class Room : MonoBehaviour
             GameTimer.Instance.SetPaused(true);
         }
 
-        // Desbloquear AMBAS puertas
-        if (entryDoor != null) entryDoor.SetLocked(false);
+        // Solo desbloquear la puerta de SALIDA
         if (exitDoor != null) exitDoor.SetLocked(false);
     }
 
