@@ -8,12 +8,9 @@ public class PlayerInteract : MonoBehaviour
     [SerializeField] private LayerMask interactLayer;
     [SerializeField] private Transform cameraTransform;
 
-    private bool wantsInteract;
-
-    // Evento llamado desde PlayerInput (Invoke Unity Events)
-    public void OnInteract(InputAction.CallbackContext context)
+    private void Update()
     {
-        if (context.performed)
+        if (Keyboard.current.eKey.wasPressedThisFrame)
         {
             TryInteract();
         }
@@ -25,7 +22,6 @@ public class PlayerInteract : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, interactRange, interactLayer))
         {
-            // Busca IInteractable en el objeto o sus padres
             IInteractable interactable = hit.collider.GetComponentInParent<IInteractable>();
 
             if (interactable != null)

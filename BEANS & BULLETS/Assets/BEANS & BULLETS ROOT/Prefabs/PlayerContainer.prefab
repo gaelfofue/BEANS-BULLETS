@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7695284845146355993}
   - component: {fileID: 2177541658818168477}
   - component: {fileID: 3613671430051995049}
-  m_Layer: 3
+  m_Layer: 6
   m_Name: GunHolder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -26,14 +26,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 874084604183319668}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5304919991564780161}
   - {fileID: 1857313722757607507}
-  m_Father: {fileID: 1293073369852954657}
+  m_Father: {fileID: 6560616446564819847}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2177541658818168477
 MonoBehaviour:
@@ -244,8 +244,7 @@ GameObject:
   - component: {fileID: 2444004102081591994}
   - component: {fileID: 3083723659674730577}
   - component: {fileID: 9167891837824233018}
-  - component: {fileID: 8842871531682497536}
-  m_Layer: 3
+  m_Layer: 6
   m_Name: GunCamera
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
@@ -264,7 +263,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 7695284845146355993}
   m_Father: {fileID: 1293073369852954657}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &2444004102081591994
@@ -370,27 +370,6 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!114 &8842871531682497536
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3518016148598264039}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e07ab296c74a80344a54ff465a524df1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerCamera
-  orientation: {fileID: 3671857942247478419}
-  playerMovement: {fileID: 2578529339699003369}
-  sensitivity: 50
-  sensMultiplier: 1
-  topClamp: 90
-  bottomClamp: -90
-  enableHeadBob: 1
-  bobFrequency: 8
-  bobAmplitude: 0.2
 --- !u!1 &4036095114019597210
 GameObject:
   m_ObjectHideFlags: 0
@@ -407,6 +386,7 @@ GameObject:
   - component: {fileID: 2087572625961534522}
   - component: {fileID: 2578529339699003369}
   - component: {fileID: 1112248776346918941}
+  - component: {fileID: 6578074134158987981}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -494,7 +474,7 @@ CapsuleCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4036095114019597210}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: aa2da1cf5e0e752459f453171adf7603, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -732,10 +712,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
   orientation: {fileID: 3671857942247478419}
-  moveSpeed: 3500
-  maxSpeed: 20
+  moveSpeed: 1000
+  maxSpeed: 10
   counterMovement: 0.175
-  jumpForce: 200
+  jumpForce: 150
   jumpCooldown: 0.25
   grounded: 0
   whatIsGround:
@@ -773,6 +753,23 @@ MonoBehaviour:
   enemyHitEffect: {fileID: 0}
   gunRecoil: {fileID: 1651535424764421352}
   crosshairUI: {fileID: 0}
+--- !u!114 &6578074134158987981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4036095114019597210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd974629e4cbcd24bbfb4a5ed570fbc1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerInteract
+  interactRange: 3
+  interactLayer:
+    serializedVersion: 2
+    m_Bits: 1
+  cameraTransform: {fileID: 1293073369852954657}
 --- !u!1 &6369210929808682392
 GameObject:
   m_ObjectHideFlags: 0
@@ -782,7 +779,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1857313722757607507}
-  m_Layer: 3
+  m_Layer: 6
   m_Name: GunTip
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -838,7 +835,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6560616446564819847}
-  - {fileID: 7695284845146355993}
   m_Father: {fileID: 2857606334502954764}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &8056066494849973197
@@ -916,7 +912,8 @@ MonoBehaviour:
   m_RequiresDepthTextureOption: 2
   m_RequiresOpaqueTextureOption: 2
   m_CameraType: 0
-  m_Cameras: []
+  m_Cameras:
+  - {fileID: 2444004102081591994}
   m_RendererIndex: -1
   m_VolumeLayerMask:
     serializedVersion: 2
@@ -991,7 +988,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -9.82}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.66412, y: 0.66412, z: 0.66412}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2966209755899234516}
@@ -1097,6 +1094,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 5a38ab7e5eb5a4742a0a3118a1a22912, type: 3}
       propertyPath: m_Name
       value: GUN
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 5a38ab7e5eb5a4742a0a3118a1a22912, type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
