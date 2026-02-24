@@ -22,9 +22,13 @@ public class Room : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        Debug.Log($"Room trigger tocado por: {other.gameObject.name} | Tag: {other.tag}");
+        Debug.Log($"roomActivated: {roomActivated}");
+
         if (roomActivated) return;
         if (!other.CompareTag("Player")) return;
 
+        Debug.Log("ACTIVANDO SALA");
         ActivateRoom();
     }
 
@@ -32,17 +36,15 @@ public class Room : MonoBehaviour
     {
         roomActivated = true;
 
-        // Cerrar y bloquear entrada
+        Debug.Log($"Sala activada: {gameObject.name}");
+
+        // Cerrar entrada detrás del player
         if (entryDoor != null)
-        {
             entryDoor.Lock();
-        }
 
         // Bloquear salida
         if (exitDoor != null)
-        {
             exitDoor.Lock();
-        }
 
         if (isCombatRoom)
         {
@@ -83,15 +85,15 @@ public class Room : MonoBehaviour
         activeEnemies.Remove(enemy);
 
         if (activeEnemies.Count <= 0)
-        {
             CompleteRoom();
-        }
     }
 
     private void CompleteRoom()
     {
         if (roomCompleted) return;
         roomCompleted = true;
+
+        Debug.Log($"SALA LIMPIA: {gameObject.name}");
 
         if (GameTimer.Instance != null)
             GameTimer.Instance.SetPaused(true);
@@ -100,7 +102,6 @@ public class Room : MonoBehaviour
             exitDoor.Unlock();
     }
 
-    // Usado por LevelManager para alinear la sala
     public Transform GetEntryPoint()
     {
         return entryPoint;

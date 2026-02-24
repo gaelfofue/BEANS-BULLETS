@@ -6,6 +6,7 @@ public class Door : MonoBehaviour, IInteractable
     [SerializeField] private Transform doorPanel;
     [SerializeField] private float openHeight = 4f;
     [SerializeField] private float moveSpeed = 3f;
+    [SerializeField] private float stayOpenTime = 3f;
 
     [Header("COLORS")]
     [SerializeField] private MeshRenderer doorRenderer;
@@ -13,6 +14,7 @@ public class Door : MonoBehaviour, IInteractable
 
     [Header("Audio")]
     [SerializeField] private AudioClip openSound;
+    [SerializeField] private AudioClip closeSound;
     [SerializeField] private AudioClip lockedSound;
 
     private Vector3 closedPosition;
@@ -20,6 +22,7 @@ public class Door : MonoBehaviour, IInteractable
     private bool isOpen;
     private bool isMoving;
     private bool isLocked = true;
+    private float openTimer;
     private AudioSource audioSource;
     private Material doorMaterial;
 
@@ -41,51 +44,78 @@ public class Door : MonoBehaviour, IInteractable
 
     private void Update()
     {
-        if (!isMoving) return;
-
-        Vector3 target = isOpen ? openPosition : closedPosition;
-
-        doorPanel.localPosition = Vector3.MoveTowards(
-            doorPanel.localPosition,
-            target,
-            moveSpeed * Time.deltaTime
-        );
-
-        if (Vector3.Distance(doorPanel.localPosition, target) < 0.01f)
+        // Mover la puerta
+        if (isMoving)
         {
-            doorPanel.localPosition = target;
-            isMoving = false;
+            Vector3 target = isOpen ? openPosition : closedPosition;
+
+            doorPanel.localPosition = Vector3.MoveTowards(
+                doorPanel.localPosition,
+                target,
+                moveSpeed * Time.deltaTime
+            );
+
+            if (Vector3.Distance(doorPanel.localPosition, target) < 0.01f)
+            {
+                doorPanel.localPosition = target;
+                isMoving = false;
+            }
+        }
+
+        // Timer para cerrar automáticamente
+        if (isOpen && stayOpenTime > 0f)
+        {
+            openTimer -= Time.deltaTime;
+
+            if (openTimer <= 0f)
+            {
+                isOpen = false;
+                isMoving = true;
+                PlaySound(closeSound);
+            }
         }
     }
 
+    // Player pulsa E
     public void Interact()
     {
         if (isMoving) return;
 
         if (isLocked)
         {
-            if (lockedSound != null) audioSource.PlayOneShot(lockedSound);
+            PlaySound(lockedSound);
             return;
         }
 
-        isOpen = !isOpen;
-        isMoving = true;
-
-        if (openSound != null) audioSource.PlayOneShot(openSound);
+        if (!isOpen)
+        {
+            Open();
+        }
     }
+
+    // Abrir
+    private void Open()
+    {
+        isOpen = true;
+        isMoving = true;
+        openTimer = stayOpenTime;
+        PlaySound(openSound);
+    }
+
+    #region CONTROL EXTERNO
 
     public void Lock()
     {
         isLocked = true;
+        ApplyColor();
 
-        // Cerrar si está abierta
+        // Si está abierta, cerrarla
         if (isOpen)
         {
             isOpen = false;
             isMoving = true;
+            PlaySound(closeSound);
         }
-
-        ApplyColor();
     }
 
     public void Unlock()
@@ -99,6 +129,15 @@ public class Door : MonoBehaviour, IInteractable
         return isLocked;
     }
 
+    public bool IsOpen()
+    {
+        return isOpen;
+    }
+
+    #endregion
+
+    #region COLOR
+
     private void ApplyColor()
     {
         if (doorMaterial == null) return;
@@ -108,4 +147,32 @@ public class Door : MonoBehaviour, IInteractable
         doorMaterial.SetColor("_EmissionColor", color * emissionIntensity);
         doorMaterial.EnableKeyword("_EMISSION");
     }
+
+    #endregion
+
+    #region AUDIO
+
+    private void PlaySound(AudioClip clip)
+    {
+        if (clip != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(clip);
+        }
+    }
+
+    #endregion
+
+    #region DEBUG
+
+    private void OnDrawGizmosSelected()
+    {
+        if (doorPanel == null) return;
+
+        Gizmos.color = isLocked ? Color.red : Color.green;
+        Vector3 openPos = doorPanel.position + Vector3.up * openHeight;
+        Gizmos.DrawWireCube(openPos, doorPanel.lossyScale);
+        Gizmos.DrawLine(doorPanel.position, openPos);
+    }
+
+    #endregion
 }

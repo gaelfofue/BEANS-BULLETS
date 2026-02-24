@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -7,27 +7,20 @@ public class LevelManager : MonoBehaviour
     public static LevelManager Instance { get; private set; }
 
     [Header("SCENES")]
-    [SerializeField] private string[] roomScenes;
+    [SerializeField] private string[] combatScenes;
+    [SerializeField] private string[] shopScenes;
 
-    [Header("CORRIDOR REFERENCES")]
-    [SerializeField] private Transform corridorExit;
-    [SerializeField] private Transform corridorEntry;
-    [SerializeField] private Door corridorEntryDoor;
-    [SerializeField] private Door corridorExitDoor;
+    [Header("CORRIDOR")]
+    [SerializeField] private Transform corridorStart;
+    [SerializeField] private Transform corridorEnd;
 
-    [Header("TRIGGERS")]
-    [SerializeField] private BoxCollider corridorTrigger;
-    [SerializeField] private BoxCollider exitRoomTrigger;
-    [SerializeField] private BoxCollider enterRoomTrigger;
+    [Header("SHOP FREQUENCY")]
+    [SerializeField] private int shopEveryXRooms = 3;
 
     private string currentLoadedRoom = "";
     private string lastRoom = "";
     private int roomsCompleted;
-
-    // Preload
-    private AsyncOperation preloadOp;
     private bool roomReady;
-    private bool playerInCorridor;
 
     private void Awake()
     {
@@ -43,61 +36,47 @@ public class LevelManager : MonoBehaviour
         if (GameTimer.Instance != null)
             GameTimer.Instance.SetPaused(true);
 
-        // Puertas del pasillo: entrada abierta, salida cerrada
-        if (corridorEntryDoor != null) corridorEntryDoor.Unlock();
-        if (corridorExitDoor != null) corridorExitDoor.Lock();
-
         // Cargar primera sala
-        StartCoroutine(LoadFirstRoom());
-    }
-
-    private void Update()
-    {
-        // Mientras el player está en el pasillo, 
-        // desbloquear salida cuando la sala esté lista
-        if (playerInCorridor && roomReady)
-        {
-            if (corridorExitDoor != null && corridorExitDoor.IsLocked())
-            {
-                corridorExitDoor.Unlock();
-                Debug.Log("Sala lista - puerta pasillo desbloqueada");
-            }
-        }
+        StartCoroutine(LoadRoom(PickNextRoom()));
     }
 
     #region TRIGGERS
-    public void OnPlayerEnterCorridor()
+
+    // Player sale de la sala â†’ teleport al pasillo
+    public void OnPlayerExitRoom()
     {
-        if (playerInCorridor) return;
-        playerInCorridor = true;
+        Debug.Log("Player saliÃ³ de la sala â†’ teleport al pasillo");
 
-        Debug.Log("Player entró al pasillo");
-
-        // Cerrar entrada del pasillo
-        if (corridorEntryDoor != null) corridorEntryDoor.Lock();
-
-        // Timer pausado
+        // Pausar timer en el pasillo
         if (GameTimer.Instance != null)
             GameTimer.Instance.SetPaused(true);
 
-        // Si la sala ya está lista, abrir salida
-        if (roomReady && corridorExitDoor != null)
-            corridorExitDoor.Unlock();
-    }
-
-    public void OnPlayerExitCorridor()
-    {
-        Debug.Log("Player salió del pasillo hacia la sala");
-
-        // Cerrar salida del pasillo detrás del player
-        if (corridorExitDoor != null) corridorExitDoor.Lock();
-    }
-
-    public void OnPlayerExitRoom()
-    {
-        Debug.Log("Player salió de la sala");
-
         // Teleportar al inicio del pasillo
+        TeleportPlayer(corridorStart.position);
+
+        // Descargar sala actual y cargar siguiente
+        StartCoroutine(UnloadAndLoadNext());
+    }
+
+    // Player llega al final del pasillo â†’ activar sala si estÃ¡ lista
+    public void OnPlayerReachCorridorEnd()
+    {
+        if (!roomReady)
+        {
+            Debug.Log("Sala aÃºn cargando, esperando...");
+            StartCoroutine(WaitForRoomAndContinue());
+            return;
+        }
+
+        Debug.Log("Player llegÃ³ al final del pasillo, sala lista");
+    }
+
+    #endregion
+
+    #region TELEPORT
+
+    private void TeleportPlayer(Vector3 position)
+    {
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player == null) return;
 
@@ -108,43 +87,36 @@ public class LevelManager : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
         }
 
-        player.transform.position = corridorEntry.position;
-
-        // Resetear pasillo
-        playerInCorridor = false;
-        if (corridorEntryDoor != null) corridorEntryDoor.Unlock();
-        if (corridorExitDoor != null) corridorExitDoor.Lock();
-
-        // Descargar sala actual y precargar siguiente
-        StartCoroutine(UnloadAndPreload());
+        player.transform.position = position;
     }
 
     #endregion
 
-    #region LOADING
+    #region SCENE LOADING
 
-    private IEnumerator LoadFirstRoom()
+    private IEnumerator LoadRoom(string sceneName)
     {
-        string chosen = PickRandomRoom();
+        roomReady = false;
 
-        AsyncOperation load = SceneManager.LoadSceneAsync(chosen, LoadSceneMode.Additive);
+        Debug.Log($"Cargando: {sceneName}");
+
+        AsyncOperation load = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
+
         while (!load.isDone)
             yield return null;
 
-        currentLoadedRoom = chosen;
+        currentLoadedRoom = sceneName;
+
         yield return null;
 
-        AlignRoom(chosen);
+        AlignRoom(sceneName);
+
         roomReady = true;
 
-        // Primera sala lista, abrir pasillo
-        if (corridorExitDoor != null)
-            corridorExitDoor.Unlock();
-
-        Debug.Log($"Primera sala cargada: {chosen}");
+        Debug.Log($"Sala lista: {sceneName}");
     }
 
-    private IEnumerator UnloadAndPreload()
+    private IEnumerator UnloadAndLoadNext()
     {
         roomReady = false;
 
@@ -158,40 +130,36 @@ public class LevelManager : MonoBehaviour
             currentLoadedRoom = "";
         }
 
-        // Cargar nueva sala
-        string chosen = PickRandomRoom();
+        // Resetear triggers
+        ResetAllZoneTriggers();
 
-        preloadOp = SceneManager.LoadSceneAsync(chosen, LoadSceneMode.Additive);
-        preloadOp.allowSceneActivation = false;
+        // Cargar siguiente
+        string next = PickNextRoom();
+        yield return StartCoroutine(LoadRoom(next));
 
-        // Esperar a que esté lista
-        while (preloadOp.progress < 0.9f)
-            yield return null;
-
-        // Activar
-        preloadOp.allowSceneActivation = true;
-        while (!preloadOp.isDone)
-            yield return null;
-
-        currentLoadedRoom = chosen;
-        preloadOp = null;
-
-        yield return null;
-
-        AlignRoom(chosen);
-
-        roomReady = true;
         roomsCompleted++;
-
-        Debug.Log($"Nueva sala lista: {chosen} | Total: {roomsCompleted}");
+        Debug.Log($"Salas completadas: {roomsCompleted}");
     }
+
+    private IEnumerator WaitForRoomAndContinue()
+    {
+        while (!roomReady)
+        {
+            yield return null;
+        }
+
+        Debug.Log("Sala terminÃ³ de cargar, player puede continuar");
+    }
+
+    #endregion
+
+    #region ALIGN
 
     private void AlignRoom(string sceneName)
     {
         Scene scene = SceneManager.GetSceneByName(sceneName);
         if (!scene.IsValid()) return;
 
-        // Buscar Room en la escena cargada
         Room room = null;
         GameObject[] roots = scene.GetRootGameObjects();
 
@@ -203,43 +171,64 @@ public class LevelManager : MonoBehaviour
 
         if (room == null || room.GetEntryPoint() == null)
         {
-            // Sin entry point, poner directo en corridorExit
             foreach (GameObject root in roots)
-            {
-                root.transform.position += corridorExit.position;
-            }
+                root.transform.position += corridorEnd.position;
             return;
         }
 
-        // Alinear: el entryPoint de la sala debe coincidir con corridorExit
-        Vector3 entryWorldPos = room.GetEntryPoint().position;
-        Vector3 offset = corridorExit.position - entryWorldPos;
+        Vector3 entryPos = room.GetEntryPoint().position;
+        Vector3 offset = corridorEnd.position - entryPos;
 
         foreach (GameObject root in roots)
-        {
             root.transform.position += offset;
-        }
 
-        Debug.Log($"Sala alineada. Offset: {offset}");
+        Debug.Log($"Sala alineada con final del pasillo");
     }
 
-    private string PickRandomRoom()
+    #endregion
+
+    #region ROOM SELECTION
+
+    private string PickNextRoom()
     {
-        if (roomScenes.Length == 0) return "";
+        if (shopScenes.Length > 0 && roomsCompleted > 0 && roomsCompleted % shopEveryXRooms == 0)
+        {
+            return shopScenes[Random.Range(0, shopScenes.Length)];
+        }
+
+        if (combatScenes.Length == 0)
+        {
+            Debug.LogError("No hay salas configuradas");
+            return "";
+        }
 
         string chosen = "";
         int attempts = 0;
 
         do
         {
-            chosen = roomScenes[Random.Range(0, roomScenes.Length)];
+            chosen = combatScenes[Random.Range(0, combatScenes.Length)];
             attempts++;
         }
-        while (chosen == lastRoom && roomScenes.Length > 1 && attempts < 10);
+        while (chosen == lastRoom && combatScenes.Length > 1 && attempts < 10);
 
         lastRoom = chosen;
         return chosen;
     }
+
+    #endregion
+
+    #region HELPERS
+
+    private void ResetAllZoneTriggers()
+    {
+        ZoneTrigger[] triggers = FindObjectsOfType<ZoneTrigger>();
+        foreach (ZoneTrigger t in triggers)
+            t.ResetTrigger();
+    }
+
+    public bool IsRoomReady() { return roomReady; }
+    public int GetRoomsCompleted() { return roomsCompleted; }
 
     #endregion
 }

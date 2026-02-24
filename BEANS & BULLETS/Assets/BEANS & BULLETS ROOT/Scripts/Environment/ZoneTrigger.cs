@@ -9,9 +9,8 @@ public class ZoneTrigger : MonoBehaviour
 
     private enum TriggerType
     {
-        EnterCorridor,
-        ExitCorridor,
-        ExitRoom
+        ExitRoom,
+        CorridorEnd
     }
 
     private void OnTriggerEnter(Collider other)
@@ -23,16 +22,12 @@ public class ZoneTrigger : MonoBehaviour
 
         switch (triggerType)
         {
-            case TriggerType.EnterCorridor:
-                LevelManager.Instance.OnPlayerEnterCorridor();
-                break;
-
-            case TriggerType.ExitCorridor:
-                LevelManager.Instance.OnPlayerExitCorridor();
-                break;
-
             case TriggerType.ExitRoom:
                 LevelManager.Instance.OnPlayerExitRoom();
+                break;
+
+            case TriggerType.CorridorEnd:
+                LevelManager.Instance.OnPlayerReachCorridorEnd();
                 break;
         }
     }
