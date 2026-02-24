@@ -9,7 +9,6 @@ public class EnemyHealth : MonoBehaviour
     [Header("Feedback")]
     public GameObject deathEffect;
 
-    // Referencia a la sala (asignada por Room.cs al spawnear)
     private Room myRoom;
 
     void Start()
@@ -25,7 +24,6 @@ public class EnemyHealth : MonoBehaviour
     public void TakeDamage(float damage)
     {
         currentHealth -= damage;
-
         StartCoroutine(DamageFlash());
 
         if (currentHealth <= 0)
@@ -41,13 +39,11 @@ public class EnemyHealth : MonoBehaviour
             Instantiate(deathEffect, transform.position, Quaternion.identity);
         }
 
-        // Dar tiempo por kill
         if (GameTimer.Instance != null)
         {
             GameTimer.Instance.AddKillTime();
         }
 
-        // Notificar a la sala
         if (myRoom != null)
         {
             myRoom.OnEnemyDied(this);

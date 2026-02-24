@@ -24,7 +24,6 @@ public class GameTimer : MonoBehaviour
     public UnityEvent onTimerEnd;
     public UnityEvent<float> onTimerChanged;
 
-    // Singleton
     public static GameTimer Instance;
 
     void Awake()
@@ -46,7 +45,6 @@ public class GameTimer : MonoBehaviour
         if (!isRunning || isDead) return;
 
         currentTime -= drainSpeed * Time.deltaTime;
-
         onTimerChanged?.Invoke(currentTime / maxTime);
 
         if (currentTime <= 0)
@@ -54,11 +52,8 @@ public class GameTimer : MonoBehaviour
             currentTime = 0;
             isDead = true;
             onTimerEnd?.Invoke();
-            Debug.Log("GAME OVER!");
         }
     }
-
-    #region CONTROL
 
     public void StartTimer()
     {
@@ -67,10 +62,7 @@ public class GameTimer : MonoBehaviour
         onTimerStart?.Invoke();
     }
 
-    public void PauseTimer()
-    {
-        isRunning = false;
-    }
+    public void PauseTimer() { isRunning = false; }
 
     public void ResumeTimer()
     {
@@ -78,18 +70,11 @@ public class GameTimer : MonoBehaviour
         isRunning = true;
     }
 
-    // Nuevo método que usa Room.cs
     public void SetPaused(bool paused)
     {
         if (isDead) return;
-
         isRunning = !paused;
-        Debug.Log($"Timer {(paused ? "PAUSADO" : "ACTIVO")}");
     }
-
-    #endregion
-
-    #region ADD TIME
 
     public void AddKillTime()
     {
@@ -112,23 +97,13 @@ public class GameTimer : MonoBehaviour
         currentTime = Mathf.Min(currentTime, maxTime);
     }
 
-    #endregion
-
-    #region MUTACIONES
-
     public void SetTimePerKill(float value) { timePerKill = value; }
     public void SetTimePerHit(float value) { timePerHit = value; }
     public void SetDrainSpeed(float value) { drainSpeed = value; }
     public void SetMaxTime(float value) { maxTime = value; }
 
-    #endregion
-
-    #region GETTERS
-
     public float GetTimePercent() { return currentTime / maxTime; }
     public float GetCurrentTime() { return currentTime; }
     public bool IsDead() { return isDead; }
     public bool IsRunning() { return isRunning; }
-
-    #endregion
 }

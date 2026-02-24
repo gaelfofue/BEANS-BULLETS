@@ -186,6 +186,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExitTrigger
   action: 0
+  triggered: 0
 --- !u!1 &341595024
 GameObject:
   m_ObjectHideFlags: 0
@@ -329,13 +330,9 @@ MonoBehaviour:
   doorPanel: {fileID: 341595028}
   openHeight: 4
   moveSpeed: 3
-  stayOpenTime: 3
   doorRenderer: {fileID: 341595025}
-  lockedColor: {r: 1, g: 0, b: 0, a: 1}
-  unlockedColor: {r: 0, g: 1, b: 0, a: 1}
   emissionIntensity: 2
   openSound: {fileID: 0}
-  closeSound: {fileID: 0}
   lockedSound: {fileID: 0}
 --- !u!4 &409597681
 Transform:
@@ -550,13 +547,9 @@ MonoBehaviour:
   doorPanel: {fileID: 707870663}
   openHeight: 4
   moveSpeed: 3
-  stayOpenTime: 3
   doorRenderer: {fileID: 707870660}
-  lockedColor: {r: 1, g: 0, b: 0, a: 1}
-  unlockedColor: {r: 0, g: 1, b: 0, a: 1}
   emissionIntensity: 2
   openSound: {fileID: 0}
-  closeSound: {fileID: 0}
   lockedSound: {fileID: 0}
 --- !u!4 &812118071
 Transform:
@@ -1440,11 +1433,7 @@ MonoBehaviour:
   entryDoor: {fileID: 812118070}
   exitDoor: {fileID: 409597680}
   exitTrigger: {fileID: 163670708}
---- !u!4 &944506568 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1293073369852954657, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
-  m_PrefabInstance: {fileID: 1141866359}
-  m_PrefabAsset: {fileID: 0}
+  playerInCorridor: 0
 --- !u!1 &1008433102
 GameObject:
   m_ObjectHideFlags: 0
@@ -1503,7 +1492,7 @@ PrefabInstance:
     - target: {fileID: 2087572625961534522, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_ActionEvents.Array.data[3].m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 1400304159}
+      objectReference: {fileID: 0}
     - target: {fileID: 2087572625961534522, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_ActionEvents.Array.data[3].m_PersistentCalls.m_Calls.Array.data[0].m_CallState
       value: 2
@@ -1550,11 +1539,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6248809168652289912, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.39
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6248809168652289912, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -2.84
+      value: -4
       objectReference: {fileID: 0}
     - target: {fileID: 6248809168652289912, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1607,10 +1596,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 4036095114019597210, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1400304159}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
 --- !u!1001 &1210905703
 PrefabInstance:
@@ -1620,6 +1606,22 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1565214420993627215, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
+      propertyPath: onTimerEnd.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1415753058}
+    - target: {fileID: 1565214420993627215, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
+      propertyPath: onTimerChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1415753058}
+    - target: {fileID: 1565214420993627215, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
+      propertyPath: onTimerEnd.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: OnGameOver
+      objectReference: {fileID: 0}
+    - target: {fileID: 1565214420993627215, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
+      propertyPath: onTimerChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: UpdateTimer
+      objectReference: {fileID: 0}
     - target: {fileID: 5845731133022221652, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
       propertyPath: m_Name
       value: GameManager
@@ -1670,7 +1672,7 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 5845731133022221652, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2113821339}
+      addedObject: {fileID: 2113821337}
   m_SourcePrefab: {fileID: 100100000, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
 --- !u!43 &1333575289
 Mesh:
@@ -1850,28 +1852,6 @@ Mesh:
       - serializedVersion: 1
         m_IndexStart: 0
         m_IndexCount: 0
---- !u!1 &1400304150 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4036095114019597210, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
-  m_PrefabInstance: {fileID: 1141866359}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1400304159
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1400304150}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fd974629e4cbcd24bbfb4a5ed570fbc1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerInteract
-  interactRange: 6
-  interactLayer:
-    serializedVersion: 2
-    m_Bits: 1
-  cameraTransform: {fileID: 944506568}
 --- !u!1001 &1415753057
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1981,6 +1961,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 5760a0f3c767c2d40a0e8f026d454343, type: 3}
+--- !u!114 &1415753058 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4871618212744262099, guid: 5760a0f3c767c2d40a0e8f026d454343, type: 3}
+  m_PrefabInstance: {fileID: 1415753057}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54fe1d00e9d69b24f8e61d9e7a2013f9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TimerUI
 --- !u!20 &1863341506 stripped
 Camera:
   m_CorrespondingSourceObject: {fileID: 2444004102081591994, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
@@ -2002,7 +1993,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 5845731133022221652, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
   m_PrefabInstance: {fileID: 1210905703}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &2113821339
+--- !u!114 &2113821337
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -2011,14 +2002,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 2113821336}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f6ba97f05f883f04c8cd87eaf2b8ae93, type: 3}
+  m_Script: {fileID: 11500000, guid: ab08ac8c2c18637428c187329f142997, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SceneTransition
-  roomScenes:
-  - TestRoomA
-  - TestRoomB
-  - TestRoomC
-  roomAnchor: {fileID: 1008433103}
+  m_EditorClassIdentifier: Assembly-CSharp::LevelManager
+  roomScenes: []
+  corridorExit: {fileID: 0}
+  corridorEntry: {fileID: 0}
+  corridorEntryDoor: {fileID: 0}
+  corridorExitDoor: {fileID: 0}
+  corridorTrigger: {fileID: 0}
+  exitRoomTrigger: {fileID: 0}
+  enterRoomTrigger: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -1,8 +1,4 @@
-// Door.cs
-// Adjuntar al GameObject padre de cada puerta
-
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class Door : MonoBehaviour, IInteractable
 {
@@ -10,26 +6,20 @@ public class Door : MonoBehaviour, IInteractable
     [SerializeField] private Transform doorPanel;
     [SerializeField] private float openHeight = 4f;
     [SerializeField] private float moveSpeed = 3f;
-    [SerializeField] private float stayOpenTime = 3f;
 
-    [Header("LOCK SYSTEM")]
+    [Header("COLORS")]
     [SerializeField] private MeshRenderer doorRenderer;
-    [SerializeField] private Color lockedColor = Color.red;
-    [SerializeField] private Color unlockedColor = Color.green;
     [SerializeField] private float emissionIntensity = 2f;
 
-    [Header("Audio (opcional)")]
+    [Header("Audio")]
     [SerializeField] private AudioClip openSound;
-    [SerializeField] private AudioClip closeSound;
     [SerializeField] private AudioClip lockedSound;
 
-    // Estado
     private Vector3 closedPosition;
     private Vector3 openPosition;
     private bool isOpen;
     private bool isMoving;
     private bool isLocked = true;
-    private float openTimer;
     private AudioSource audioSource;
     private Material doorMaterial;
 
@@ -40,102 +30,16 @@ public class Door : MonoBehaviour, IInteractable
 
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.spatialBlend = 1f;
-        audioSource.maxDistance = 15f;
 
-        // Crear instancia del material para no afectar a otras puertas
         if (doorRenderer != null)
         {
             doorMaterial = doorRenderer.material;
         }
 
-        // Empieza bloqueada
-        SetLocked(true);
+        ApplyColor();
     }
 
     private void Update()
-    {
-        HandleTimer();
-        MoveDoor();
-    }
-
-    #region LOCK SYSTEM
-
-    public void SetLocked(bool locked)
-    {
-        isLocked = locked;
-
-        if (doorMaterial == null) return;
-
-        Color color = locked ? lockedColor : unlockedColor;
-        Color emission = color * emissionIntensity;
-
-        doorMaterial.color = color;
-        doorMaterial.SetColor("_EmissionColor", emission);
-        doorMaterial.EnableKeyword("_EMISSION");
-
-        // Si se bloquea mientras está abierta, cerrarla
-        if (locked && isOpen)
-        {
-            isOpen = false;
-            isMoving = true;
-        }
-    }
-
-    public bool IsLocked()
-    {
-        return isLocked;
-    }
-
-    #endregion
-
-    #region INTERACT
-
-    public void Interact()
-    {
-        if (isMoving) return;
-
-        if (isLocked)
-        {
-            PlaySound(lockedSound);
-            Debug.Log("Puerta bloqueada");
-            return;
-        }
-
-        if (!isOpen)
-        {
-            isOpen = true;
-            isMoving = true;
-            openTimer = stayOpenTime;
-            PlaySound(openSound);
-        }
-        else
-        {
-            isOpen = false;
-            isMoving = true;
-            PlaySound(closeSound);
-        }
-    }
-
-    #endregion
-
-    #region MOVEMENT
-
-    private void HandleTimer()
-    {
-        if (!isOpen) return;
-        if (stayOpenTime <= 0f) return;
-
-        openTimer -= Time.deltaTime;
-
-        if (openTimer <= 0f)
-        {
-            isOpen = false;
-            isMoving = true;
-            PlaySound(closeSound);
-        }
-    }
-
-    private void MoveDoor()
     {
         if (!isMoving) return;
 
@@ -154,52 +58,54 @@ public class Door : MonoBehaviour, IInteractable
         }
     }
 
-    #endregion
-
-    #region CONTROL EXTERNO
-
-    public void ForceOpen()
+    public void Interact()
     {
-        if (isLocked) return;
+        if (isMoving) return;
 
-        isOpen = true;
-        isMoving = true;
-        openTimer = stayOpenTime;
-        PlaySound(openSound);
-    }
-
-    public void ForceClose()
-    {
-        isOpen = false;
-        isMoving = true;
-        PlaySound(closeSound);
-    }
-
-    #endregion
-
-    #region AUDIO
-
-    private void PlaySound(AudioClip clip)
-    {
-        if (clip != null && audioSource != null)
+        if (isLocked)
         {
-            audioSource.PlayOneShot(clip);
+            if (lockedSound != null) audioSource.PlayOneShot(lockedSound);
+            return;
         }
+
+        isOpen = !isOpen;
+        isMoving = true;
+
+        if (openSound != null) audioSource.PlayOneShot(openSound);
     }
 
-    #endregion
-
-    #region DEBUG
-
-    private void OnDrawGizmosSelected()
+    public void Lock()
     {
-        if (doorPanel == null) return;
+        isLocked = true;
 
-        Gizmos.color = isLocked ? Color.red : Color.green;
-        Vector3 openPos = doorPanel.position + Vector3.up * openHeight;
-        Gizmos.DrawWireCube(openPos, doorPanel.lossyScale);
-        Gizmos.DrawLine(doorPanel.position, openPos);
+        // Cerrar si está abierta
+        if (isOpen)
+        {
+            isOpen = false;
+            isMoving = true;
+        }
+
+        ApplyColor();
     }
 
-    #endregion
+    public void Unlock()
+    {
+        isLocked = false;
+        ApplyColor();
+    }
+
+    public bool IsLocked()
+    {
+        return isLocked;
+    }
+
+    private void ApplyColor()
+    {
+        if (doorMaterial == null) return;
+
+        Color color = isLocked ? Color.red : Color.green;
+        doorMaterial.color = color;
+        doorMaterial.SetColor("_EmissionColor", color * emissionIntensity);
+        doorMaterial.EnableKeyword("_EMISSION");
+    }
 }

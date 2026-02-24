@@ -8,44 +8,23 @@ public class Room : MonoBehaviour
     [SerializeField] private Door entryDoor;
     [SerializeField] private Door exitDoor;
 
-    [Header("ENEMIES (solo combat rooms)")]
+    [Header("ENTRY POINT")]
+    [SerializeField] private Transform entryPoint;
+
+    [Header("ENEMIES")]
     [SerializeField] private Transform[] spawnPoints;
     [SerializeField] private GameObject enemyPrefab;
-    [SerializeField] private int enemyCount = 5;
+    [SerializeField] private int enemyCount = 1;
 
-    [Header("TRIGGER")]
-    [SerializeField] private BoxCollider roomTrigger;
-
-    // Estado
     private List<EnemyHealth> activeEnemies = new List<EnemyHealth>();
     private bool roomActivated;
     private bool roomCompleted;
 
-    private void Start()
-    {
-        // Todas las puertas empiezan bloqueadas
-        if (entryDoor != null) entryDoor.SetLocked(true);
-        if (exitDoor != null) exitDoor.SetLocked(true);
-    }
-
-    #region PLAYER ENTERS
-
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log($"Trigger tocado por: {other.gameObject.name} | Tag: {other.tag}");
+        if (roomActivated) return;
+        if (!other.CompareTag("Player")) return;
 
-        if (roomActivated)
-        {
-            Debug.Log("Sala ya activada, ignorando");
-            return;
-        }
-        if (!other.CompareTag("Player"))
-        {
-            Debug.Log("No es el Player, ignorando");
-            return;
-        }
-
-        Debug.Log("ACTIVANDO SALA");
         ActivateRoom();
     }
 
@@ -53,46 +32,33 @@ public class Room : MonoBehaviour
     {
         roomActivated = true;
 
-        Debug.Log($"Sala activada: {gameObject.name} | Combate: {isCombatRoom}");
-
-        // Cerrar puerta de entrada
+        // Cerrar y bloquear entrada
         if (entryDoor != null)
         {
-            entryDoor.ForceClose();
-            entryDoor.SetLocked(true);
+            entryDoor.Lock();
         }
 
-        // Bloquear puerta de salida
+        // Bloquear salida
         if (exitDoor != null)
         {
-            exitDoor.SetLocked(true);
+            exitDoor.Lock();
         }
 
         if (isCombatRoom)
         {
-            // Reanudar timer
             if (GameTimer.Instance != null)
-            {
                 GameTimer.Instance.SetPaused(false);
-            }
 
             SpawnEnemies();
         }
         else
         {
-            // Es un pasillo: pausar timer y desbloquear salida
             if (GameTimer.Instance != null)
-            {
                 GameTimer.Instance.SetPaused(true);
-            }
 
             CompleteRoom();
         }
     }
-
-    #endregion
-
-    #region ENEMIES
 
     private void SpawnEnemies()
     {
@@ -100,32 +66,21 @@ public class Room : MonoBehaviour
 
         for (int i = 0; i < enemyCount; i++)
         {
-            Transform spawnPoint = spawnPoints[i % spawnPoints.Length];
-
-            GameObject enemyGO = Instantiate(
-                enemyPrefab,
-                spawnPoint.position,
-                spawnPoint.rotation
-            );
+            Transform sp = spawnPoints[i % spawnPoints.Length];
+            GameObject enemyGO = Instantiate(enemyPrefab, sp.position, sp.rotation);
 
             EnemyHealth health = enemyGO.GetComponent<EnemyHealth>();
-
             if (health != null)
             {
                 activeEnemies.Add(health);
                 health.SetRoom(this);
             }
         }
-
-        Debug.Log($"Spawneados {enemyCount} enemigos");
     }
 
-    // Llamado desde EnemyHealth cuando muere un enemigo
     public void OnEnemyDied(EnemyHealth enemy)
     {
         activeEnemies.Remove(enemy);
-
-        Debug.Log($"Enemigo muerto. Restantes: {activeEnemies.Count}");
 
         if (activeEnemies.Count <= 0)
         {
@@ -133,57 +88,21 @@ public class Room : MonoBehaviour
         }
     }
 
-    #endregion
-
-    #region ROOM CLEAR
-
     private void CompleteRoom()
     {
         if (roomCompleted) return;
-
         roomCompleted = true;
 
-        Debug.Log($"SALA LIMPIA: {gameObject.name}");
-
-        // Pausar timer (zona segura)
         if (GameTimer.Instance != null)
-        {
             GameTimer.Instance.SetPaused(true);
-        }
 
-        // Solo desbloquear la puerta de SALIDA
-        if (exitDoor != null) exitDoor.SetLocked(false);
+        if (exitDoor != null)
+            exitDoor.Unlock();
     }
 
-    #endregion
-
-    #region DEBUG
-
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = roomCompleted ? Color.green : (roomActivated ? Color.red : Color.yellow);
-        Gizmos.DrawWireCube(transform.position, Vector3.one * 2f);
-
-        if (spawnPoints == null) return;
-
-        Gizmos.color = Color.cyan;
-        foreach (Transform sp in spawnPoints)
-        {
-            if (sp != null)
-            {
-                Gizmos.DrawWireSphere(sp.position, 0.5f);
-            }
-        }
-    }
-
+    // Usado por LevelManager para alinear la sala
     public Transform GetEntryPoint()
     {
-        if (entryDoor != null)
-        {
-            return entryDoor.transform;
-        }
-        return transform;
+        return entryPoint;
     }
-
-    #endregion
 }

@@ -30,12 +30,4 @@ public class PlayerInteract : MonoBehaviour
             }
         }
     }
-
-    private void OnDrawGizmosSelected()
-    {
-        if (cameraTransform == null) return;
-
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawRay(cameraTransform.position, cameraTransform.forward * interactRange);
-    }
 }
