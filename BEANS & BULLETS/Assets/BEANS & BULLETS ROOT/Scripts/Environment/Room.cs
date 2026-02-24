@@ -176,5 +176,14 @@ public class Room : MonoBehaviour
         }
     }
 
+    public Transform GetEntryPoint()
+    {
+        if (entryDoor != null)
+        {
+            return entryDoor.transform;
+        }
+        return transform;
+    }
+
     #endregion
 }

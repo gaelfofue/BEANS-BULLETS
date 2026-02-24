@@ -135,10 +135,34 @@ public class SceneTransition : MonoBehaviour
 
         GameObject[] rootObjects = loadedScene.GetRootGameObjects();
 
+        // Buscar Room en la sala cargada
+        Room room = null;
+
         foreach (GameObject root in rootObjects)
         {
-            root.transform.position = roomAnchor.position + root.transform.position;
+            room = root.GetComponentInChildren<Room>();
+            if (room != null) break;
         }
+
+        if (room == null)
+        {
+            foreach (GameObject root in rootObjects)
+            {
+                root.transform.position = roomAnchor.position + root.transform.position;
+            }
+            return;
+        }
+
+        // La entrada de la sala debe coincidir con el RoomAnchor
+        Vector3 entryPos = room.GetEntryPoint().position;
+        Vector3 offset = roomAnchor.position - entryPos;
+
+        foreach (GameObject root in rootObjects)
+        {
+            root.transform.position += offset;
+        }
+
+        Debug.Log($"Sala alineada por puerta de entrada");
     }
 
     private string PickRandomRoom()

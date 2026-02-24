@@ -129,6 +129,7 @@ GameObject:
   m_Component:
   - component: {fileID: 163670706}
   - component: {fileID: 163670707}
+  - component: {fileID: 163670708}
   m_Layer: 0
   m_Name: ExitTrigger
   m_TagString: Untagged
@@ -172,6 +173,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &163670708
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 163670705}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cee5d07faa596746b8113d747e70ff0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ExitTrigger
+  action: 0
 --- !u!1 &341595024
 GameObject:
   m_ObjectHideFlags: 0
@@ -312,7 +326,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b87ec27f1fb9e9549a7ed2a09205ef1a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Door
-  doorPanel: {fileID: 812118071}
+  doorPanel: {fileID: 341595028}
   openHeight: 4
   moveSpeed: 3
   stayOpenTime: 3
@@ -1425,7 +1439,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CorridorManager
   entryDoor: {fileID: 812118070}
   exitDoor: {fileID: 409597680}
-  exitTrigger: {fileID: 0}
+  exitTrigger: {fileID: 163670708}
 --- !u!4 &944506568 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1293073369852954657, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
@@ -1456,7 +1470,7 @@ Transform:
   m_GameObject: {fileID: 1008433102}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 14}
+  m_LocalPosition: {x: 0, y: 0, z: 9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
