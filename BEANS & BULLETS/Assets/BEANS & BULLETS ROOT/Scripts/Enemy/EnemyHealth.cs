@@ -21,6 +21,7 @@ public class EnemyHealth : MonoBehaviour
         myRoom = room;
     }
 
+
     public void TakeDamage(float damage)
     {
         currentHealth -= damage;

@@ -1,4 +1,4 @@
-// LevelManager.cs (REEMPLAZAR COMPLETO)
+﻿// LevelManager.cs
 
 using System.Collections;
 using System.Collections.Generic;
@@ -14,20 +14,28 @@ public class LevelManager : MonoBehaviour
     [SerializeField] private string[] corridorScenes;
     [SerializeField] private string[] shopScenes;
 
-    [Header("=== SPAWN ===")]
-    [SerializeField] private Transform firstSpawnPoint;
+    [Header("=== SPAWN ROOM ===")]
+    [SerializeField] private RoomPiece spawnRoom;
 
     [Header("=== SHOP FREQUENCY ===")]
     [SerializeField] private int shopEveryXRooms = 3;
 
-    private List<LoadedPiece> pieces = new List<LoadedPiece>();
-    private Vector3 nextSpawnPosition;
+    // Todas las piezas en orden
+    private List<Piece> pieces = new List<Piece>();
     private int playerIndex = -1;
+
+    // Siguiente posición de conexión
+    private Vector3 nextSpawnPos;
+
+    // Control de carga
     private bool isLoading;
     private bool nextIsRoom = true;
     private int roomsCompleted;
     private string lastRoom = "";
     private string lastCorridor = "";
+
+    // Estado del sistema
+    private bool initialLoadDone;
 
     private void Awake()
     {
@@ -42,66 +50,130 @@ public class LevelManager : MonoBehaviour
         if (GameTimer.Instance != null)
             GameTimer.Instance.SetPaused(true);
 
-        nextSpawnPosition = firstSpawnPoint.position;
-
-        StartCoroutine(LoadNextPiece());
+        StartCoroutine(InitialLoad());
     }
 
     // ============================
-    // EVENTS
+    // INITIAL LOAD
+    // ============================
+
+    private IEnumerator InitialLoad()
+    {
+        // Registrar SpawnRoom como pieza 0
+        if (spawnRoom != null)
+        {
+            pieces.Add(new Piece
+            {
+                roomPiece = spawnRoom,
+                sceneHandle = default,
+                isSceneLoaded = false,
+                unloaded = false
+            });
+
+            spawnRoom.Initialize();
+            nextSpawnPos = spawnRoom.GetExitPoint().position;
+            playerIndex = 0;
+        }
+
+        // Cargar: Pasillo_1 + Sala_1
+        yield return StartCoroutine(LoadOnePiece());
+        yield return StartCoroutine(LoadOnePiece());
+
+        initialLoadDone = true;
+        Debug.Log($"=== INITIAL LOAD COMPLETE === Piezas: {pieces.Count}");
+    }
+
+    // ============================
+    // PLAYER EVENTS
     // ============================
 
     public void OnPlayerEnteredPiece(RoomPiece piece)
     {
+        // Encontrar índice
+        int newIndex = -1;
         for (int i = 0; i < pieces.Count; i++)
         {
-            if (pieces[i].piece == piece)
+            if (pieces[i].roomPiece == piece)
             {
-                playerIndex = i;
+                newIndex = i;
                 break;
             }
         }
 
-        Debug.Log($"Player en pieza {playerIndex}: {piece.gameObject.name}");
+        if (newIndex < 0 || newIndex == playerIndex) return;
+
+        int previousIndex = playerIndex;
+        playerIndex = newIndex;
+
+        Debug.Log($"=== PLAYER MOVED === Pieza {playerIndex}: {piece.gameObject.name} ({piece.GetPieceType()})");
+
+        // Activar la pieza actual
+        piece.Activate();
+
+        // Si entramos a una SALA (combat/shop), podemos:
+        // 1. Descargar todo lo anterior (puerta cerrada oculta)
+        // 2. Rellenar el buffer adelante
+        if (piece.GetPieceType() == RoomPiece.PieceType.Combat ||
+            piece.GetPieceType() == RoomPiece.PieceType.Shop)
+        {
+            StartCoroutine(OnEnteredRoom());
+        }
     }
 
-    public void OnPieceCompleted()
+    public void OnRoomCompleted()
     {
         roomsCompleted++;
-        Debug.Log($"Salas completadas: {roomsCompleted}");
+        Debug.Log($"=== ROOM COMPLETED === Total: {roomsCompleted}");
+        // No cargamos nada aquí, el buffer ya está lleno
     }
 
-    public void OnPlayerEnteredCorridor()
-    {
-        Debug.Log("Player en pasillo, descargando piezas viejas");
-        StartCoroutine(UnloadOldPieces());
+    // ============================
+    // ROOM ENTERED SEQUENCE
+    // ============================
 
-        // Cargar la siguiente sala
-        LoadNext();
+    private IEnumerator OnEnteredRoom()
+    {
+        // Esperar a que la puerta se cierre visualmente
+        yield return new WaitForSeconds(0.6f);
+
+        // Descargar todo lo anterior al player
+        yield return StartCoroutine(UnloadBehindPlayer());
+
+        // Rellenar buffer: asegurar 2 piezas por delante
+        yield return StartCoroutine(FillBuffer());
     }
 
-    public void OnPlayerExitedCorridor()
-    {
-        Debug.Log("Player sali� del pasillo");
-        StartCoroutine(UnloadOldPieces());
-    }
+    // ============================
+    // BUFFER
+    // ============================
 
-    // Llamado cuando se completa una sala o cuando se necesita la siguiente pieza
-    public void LoadNext()
+    private IEnumerator FillBuffer()
     {
-        if (!isLoading)
+        int target = 2; // Pasillo + Sala siguiente
+
+        while (PiecesAhead() < target)
         {
-            StartCoroutine(LoadNextPiece());
+            yield return StartCoroutine(LoadOnePiece());
         }
+
+        Debug.Log($"=== BUFFER OK === {PiecesAhead()} piezas adelante");
+    }
+
+    private int PiecesAhead()
+    {
+        return pieces.Count - 1 - playerIndex;
     }
 
     // ============================
     // LOADING
     // ============================
 
-    private IEnumerator LoadNextPiece()
+    private IEnumerator LoadOnePiece()
     {
-        if (isLoading) yield break;
+        // Bloquear doble carga
+        while (isLoading)
+            yield return null;
+
         isLoading = true;
 
         string sceneName;
@@ -118,14 +190,17 @@ public class LevelManager : MonoBehaviour
 
         yield return null;
 
-        Scene scene = SceneManager.GetSceneByName(sceneName);
-        if (!scene.IsValid())
+        // Encontrar la escena recién cargada (por handle, no por nombre)
+        Scene newScene = FindNewScene(sceneName);
+
+        if (!newScene.IsValid())
         {
+            Debug.LogError($"No se encontró escena: {sceneName}");
             isLoading = false;
             yield break;
         }
 
-        GameObject[] roots = scene.GetRootGameObjects();
+        GameObject[] roots = newScene.GetRootGameObjects();
 
         RoomPiece piece = null;
         foreach (GameObject root in roots)
@@ -136,66 +211,103 @@ public class LevelManager : MonoBehaviour
 
         if (piece == null)
         {
+            Debug.LogError($"No RoomPiece en: {sceneName}");
             isLoading = false;
             yield break;
         }
 
         // Alinear
-        Vector3 entryLocalOffset = piece.GetEntryPoint().position - piece.transform.position;
-        Vector3 rootTargetPos = nextSpawnPosition - entryLocalOffset;
-        Vector3 offset = rootTargetPos - piece.transform.position;
+        Vector3 entryOffset = piece.GetEntryPoint().position - piece.transform.position;
+        Vector3 targetPos = nextSpawnPos - entryOffset;
+        Vector3 moveOffset = targetPos - piece.transform.position;
 
         foreach (GameObject root in roots)
-            root.transform.position += offset;
+            root.transform.position += moveOffset;
 
-        // Rebake NavMesh
+        // NavMesh
         foreach (GameObject root in roots)
         {
             var surfaces = root.GetComponentsInChildren<Unity.AI.Navigation.NavMeshSurface>();
-            foreach (var surface in surfaces)
-            {
-                surface.BuildNavMesh();
-            }
+            foreach (var s in surfaces)
+                s.BuildNavMesh();
         }
 
-        nextSpawnPosition = piece.GetExitPoint().position;
+        // Actualizar conexión
+        nextSpawnPos = piece.GetExitPoint().position;
 
-        pieces.Add(new LoadedPiece
+        // Inicializar (abre puerta de entrada)
+        piece.Initialize();
+
+        // Registrar
+        pieces.Add(new Piece
         {
-            sceneName = sceneName,
-            piece = piece,
+            roomPiece = piece,
+            sceneHandle = newScene,
+            isSceneLoaded = true,
             unloaded = false
         });
 
         nextIsRoom = !nextIsRoom;
         isLoading = false;
 
-        Debug.Log($"Pieza lista: {sceneName} en Z={piece.GetEntryPoint().position.z:F1} | Total: {pieces.Count}");
+        Debug.Log($"Pieza lista: {sceneName} Z={piece.GetEntryPoint().position.z:F1} | Total: {pieces.Count}");
+    }
+
+    private Scene FindNewScene(string sceneName)
+    {
+        for (int i = SceneManager.sceneCount - 1; i >= 0; i--)
+        {
+            Scene s = SceneManager.GetSceneAt(i);
+            if (s.name == sceneName)
+            {
+                bool registered = false;
+                foreach (Piece p in pieces)
+                {
+                    if (!p.unloaded && p.isSceneLoaded && p.sceneHandle == s)
+                    {
+                        registered = true;
+                        break;
+                    }
+                }
+
+                if (!registered)
+                    return s;
+            }
+        }
+
+        return default;
     }
 
     // ============================
     // UNLOADING
     // ============================
 
-    private IEnumerator UnloadOldPieces()
+    private IEnumerator UnloadBehindPlayer()
     {
-        for (int i = 0; i < playerIndex - 1; i++)
+        for (int i = 0; i < playerIndex; i++)
         {
-            if (i >= pieces.Count) break;
-
-            LoadedPiece p = pieces[i];
+            Piece p = pieces[i];
             if (p.unloaded) continue;
 
-            Debug.Log($"Descargando: {p.sceneName}");
+            // Preparar visualmente
+            if (p.roomPiece != null)
+                p.roomPiece.PrepareForUnload();
 
-            AsyncOperation unload = SceneManager.UnloadSceneAsync(p.sceneName);
-            if (unload != null)
+            // Descargar escena aditiva
+            if (p.isSceneLoaded && p.sceneHandle.IsValid() && p.sceneHandle.isLoaded)
             {
-                while (!unload.isDone)
-                    yield return null;
+                Debug.Log($"Descargando pieza {i}: {p.sceneHandle.name}");
+
+                AsyncOperation unload = SceneManager.UnloadSceneAsync(p.sceneHandle);
+                if (unload != null)
+                {
+                    while (!unload.isDone)
+                        yield return null;
+                }
             }
 
             p.unloaded = true;
+            p.roomPiece = null;
             pieces[i] = p;
         }
     }
@@ -236,10 +348,15 @@ public class LevelManager : MonoBehaviour
 
     public int GetRoomsCompleted() { return roomsCompleted; }
 
-    private struct LoadedPiece
+    // ============================
+    // DATA
+    // ============================
+
+    private struct Piece
     {
-        public string sceneName;
-        public RoomPiece piece;
+        public RoomPiece roomPiece;
+        public Scene sceneHandle;
+        public bool isSceneLoaded;
         public bool unloaded;
     }
 }

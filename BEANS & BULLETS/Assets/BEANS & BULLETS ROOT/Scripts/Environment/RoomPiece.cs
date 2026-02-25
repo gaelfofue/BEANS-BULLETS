@@ -1,5 +1,4 @@
 // RoomPiece.cs
-// Adjuntar al Empty padre de CADA sala y CADA pasillo
 
 using UnityEngine;
 using System.Collections.Generic;
@@ -22,92 +21,80 @@ public class RoomPiece : MonoBehaviour
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private int enemyCount = 1;
 
+    public enum PieceType { Combat, Corridor, Shop }
+
     private List<EnemyHealth> activeEnemies = new List<EnemyHealth>();
     private bool activated;
     private bool completed;
 
-    public enum PieceType
+    public void Initialize()
     {
-        Combat,
-        Corridor,
-        Shop
-    }
-
-    private void Start()
-    {
-        // Salas: entrada abierta, salida bloqueada
         if (pieceType == PieceType.Combat || pieceType == PieceType.Shop)
         {
-            if (entryDoor != null) entryDoor.Unlock();
-            if (exitDoor != null) exitDoor.Lock();
+            if (entryDoor != null)
+                entryDoor.SetState(Door.DoorState.Open);
+            if (exitDoor != null)
+                exitDoor.SetState(Door.DoorState.Locked);
         }
     }
 
-    // Llamado cuando el player entra
     public void Activate()
     {
         if (activated) return;
         activated = true;
 
-        Debug.Log($"Pieza activada: {gameObject.name} | Tipo: {pieceType}");
-
         if (pieceType == PieceType.Combat)
         {
-            if (entryDoor != null) entryDoor.Lock();
-            if (exitDoor != null) exitDoor.Lock();
+            if (entryDoor != null)
+                entryDoor.SetState(Door.DoorState.Locked);
+            if (exitDoor != null)
+                exitDoor.SetState(Door.DoorState.Locked);
 
             if (GameTimer.Instance != null)
                 GameTimer.Instance.SetPaused(false);
 
             SpawnEnemies();
-
-            // YA NO llamamos StartPreloading aquí
         }
         else if (pieceType == PieceType.Corridor)
         {
             if (GameTimer.Instance != null)
                 GameTimer.Instance.SetPaused(true);
-
-            LevelManager.Instance.OnPlayerEnteredCorridor();
         }
         else if (pieceType == PieceType.Shop)
         {
-            if (entryDoor != null) entryDoor.Lock();
+            if (entryDoor != null)
+                entryDoor.SetState(Door.DoorState.Locked);
+            if (exitDoor != null)
+                exitDoor.SetState(Door.DoorState.Closed);
 
             if (GameTimer.Instance != null)
                 GameTimer.Instance.SetPaused(true);
-
-            if (exitDoor != null) exitDoor.Unlock();
         }
     }
 
     private void SpawnEnemies()
     {
-        if (spawnPoints == null || spawnPoints.Length == 0) return;
-        if (enemyPrefab == null) return;
+        if (spawnPoints == null || enemyPrefab == null) return;
 
         activeEnemies.Clear();
 
         for (int i = 0; i < enemyCount; i++)
         {
             Transform sp = spawnPoints[i % spawnPoints.Length];
-            GameObject enemyGO = Instantiate(enemyPrefab, sp.position, sp.rotation);
+            GameObject go = Instantiate(enemyPrefab, sp.position, sp.rotation);
 
-            EnemyHealth health = enemyGO.GetComponent<EnemyHealth>();
+            EnemyHealth health = go.GetComponent<EnemyHealth>();
             if (health != null)
             {
                 activeEnemies.Add(health);
                 health.SetRoom(this);
             }
         }
-
-        Debug.Log($"Spawneados {enemyCount} enemigos");
     }
 
     public void OnEnemyDied(EnemyHealth enemy)
     {
         activeEnemies.Remove(enemy);
-        Debug.Log($"Enemigos restantes: {activeEnemies.Count}");
 
         if (activeEnemies.Count <= 0)
             Complete();
@@ -118,21 +105,21 @@ public class RoomPiece : MonoBehaviour
         if (completed) return;
         completed = true;
 
-        Debug.Log($"PIEZA COMPLETADA: {gameObject.name}");
-
         if (GameTimer.Instance != null)
             GameTimer.Instance.SetPaused(true);
 
         if (exitDoor != null)
-            exitDoor.Unlock();
+            exitDoor.SetState(Door.DoorState.Closed);
 
-        LevelManager.Instance.OnPieceCompleted();
-
-        // Precargar la siguiente pieza AHORA
-        LevelManager.Instance.LoadNext();
+        // Avisar al LevelManager
+        LevelManager.Instance.OnRoomCompleted();
     }
 
-    // === GETTERS ===
+    public void PrepareForUnload()
+    {
+        if (exitDoor != null)
+            exitDoor.SetState(Door.DoorState.Locked);
+    }
 
     public Transform GetEntryPoint() { return entryPoint; }
     public Transform GetExitPoint() { return exitPoint; }

@@ -1,14 +1,13 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class Door : MonoBehaviour, IInteractable
 {
-    [Header("DOOR")]
+    [Header("=== DOOR ===")]
     [SerializeField] private Transform doorPanel;
     [SerializeField] private float openHeight = 4f;
     [SerializeField] private float moveSpeed = 3f;
-    [SerializeField] private float stayOpenTime = 3f;
 
-    [Header("COLORS")]
+    [Header("=== COLORS ===")]
     [SerializeField] private MeshRenderer doorRenderer;
     [SerializeField] private float emissionIntensity = 2f;
 
@@ -17,12 +16,12 @@ public class Door : MonoBehaviour, IInteractable
     [SerializeField] private AudioClip closeSound;
     [SerializeField] private AudioClip lockedSound;
 
+    public enum DoorState { Open, Closed, Locked }
+
     private Vector3 closedPosition;
     private Vector3 openPosition;
-    private bool isOpen;
     private bool isMoving;
-    private bool isLocked = true;
-    private float openTimer;
+    private DoorState currentState = DoorState.Locked;
     private AudioSource audioSource;
     private Material doorMaterial;
 
@@ -35,149 +34,100 @@ public class Door : MonoBehaviour, IInteractable
         audioSource.spatialBlend = 1f;
 
         if (doorRenderer != null)
-        {
             doorMaterial = doorRenderer.material;
-        }
 
-        ApplyColor();
+        ApplyVisuals();
     }
 
     private void Update()
     {
-        // Mover la puerta
-        if (isMoving)
+        if (!isMoving) return;
+
+        bool shouldBeUp = (currentState == DoorState.Open);
+        Vector3 target = shouldBeUp ? openPosition : closedPosition;
+
+        doorPanel.localPosition = Vector3.MoveTowards(
+            doorPanel.localPosition,
+            target,
+            moveSpeed * Time.deltaTime
+        );
+
+        if (Vector3.Distance(doorPanel.localPosition, target) < 0.01f)
         {
-            Vector3 target = isOpen ? openPosition : closedPosition;
-
-            doorPanel.localPosition = Vector3.MoveTowards(
-                doorPanel.localPosition,
-                target,
-                moveSpeed * Time.deltaTime
-            );
-
-            if (Vector3.Distance(doorPanel.localPosition, target) < 0.01f)
-            {
-                doorPanel.localPosition = target;
-                isMoving = false;
-            }
-        }
-
-        // Timer para cerrar autom�ticamente
-        if (isOpen && stayOpenTime > 0f)
-        {
-            openTimer -= Time.deltaTime;
-
-            if (openTimer <= 0f)
-            {
-                isOpen = false;
-                isMoving = true;
-                PlaySound(closeSound);
-            }
+            doorPanel.localPosition = target;
+            isMoving = false;
         }
     }
 
     // Player pulsa E
     public void Interact()
     {
-        Debug.Log($"DOOR {gameObject.name}: INTERACT | isLocked: {isLocked} | isMoving: {isMoving}");
-
         if (isMoving) return;
 
-        if (isLocked)
+        if (currentState == DoorState.Locked)
         {
-            Debug.Log($"DOOR {gameObject.name}: BLOQUEADA, no se abre");
             PlaySound(lockedSound);
             return;
         }
 
-        if (!isOpen)
+        if (currentState == DoorState.Closed)
         {
-            Debug.Log($"DOOR {gameObject.name}: ABRIENDO");
-            Open();
+            SetState(DoorState.Open);
         }
     }
 
-    // Abrir
-    private void Open()
+    public void SetState(DoorState newState)
     {
-        isOpen = true;
-        isMoving = true;
-        openTimer = stayOpenTime;
-        PlaySound(openSound);
-    }
+        DoorState oldState = currentState;
+        currentState = newState;
 
-    #region CONTROL EXTERNO
+        Debug.Log($"DOOR {gameObject.name}: {oldState} → {newState}");
 
-    public void Lock()
-    {
-        Debug.Log($"DOOR {gameObject.name}: LOCK llamado");
-        isLocked = true;
-        ApplyColor();
-
-        if (isOpen)
+        if (newState == DoorState.Open && oldState != DoorState.Open)
         {
-            isOpen = false;
+            isMoving = true;
+            PlaySound(openSound);
+        }
+        else if (newState != DoorState.Open && oldState == DoorState.Open)
+        {
             isMoving = true;
             PlaySound(closeSound);
         }
+
+        ApplyVisuals();
     }
 
-    public void Unlock()
-    {
-        Debug.Log($"DOOR {gameObject.name}: UNLOCK llamado");
-        isLocked = false;
-        ApplyColor();
-    }
+    public DoorState GetState() { return currentState; }
 
-    public bool IsLocked()
-    {
-        return isLocked;
-    }
-
-    public bool IsOpen()
-    {
-        return isOpen;
-    }
-
-    #endregion
-
-    #region COLOR
-
-    private void ApplyColor()
+    private void ApplyVisuals()
     {
         if (doorMaterial == null) return;
 
-        Color color = isLocked ? Color.red : Color.green;
+        Color color;
+        switch (currentState)
+        {
+            case DoorState.Locked:
+                color = Color.red;
+                break;
+            case DoorState.Closed:
+                color = Color.green;
+                break;
+            case DoorState.Open:
+                color = Color.green;
+                break;
+            default:
+                color = Color.red;
+                break;
+        }
+
         doorMaterial.color = color;
         doorMaterial.SetColor("_EmissionColor", color * emissionIntensity);
         doorMaterial.EnableKeyword("_EMISSION");
     }
 
-    #endregion
-
-    #region AUDIO
-
     private void PlaySound(AudioClip clip)
     {
         if (clip != null && audioSource != null)
-        {
             audioSource.PlayOneShot(clip);
-        }
     }
-
-    #endregion
-
-    #region DEBUG
-
-    private void OnDrawGizmosSelected()
-    {
-        if (doorPanel == null) return;
-
-        Gizmos.color = isLocked ? Color.red : Color.green;
-        Vector3 openPos = doorPanel.position + Vector3.up * openHeight;
-        Gizmos.DrawWireCube(openPos, doorPanel.lossyScale);
-        Gizmos.DrawLine(doorPanel.position, openPos);
-    }
-
-    #endregion
 }
