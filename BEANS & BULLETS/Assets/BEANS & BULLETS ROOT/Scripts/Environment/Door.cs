@@ -79,16 +79,20 @@ public class Door : MonoBehaviour, IInteractable
     // Player pulsa E
     public void Interact()
     {
+        Debug.Log($"DOOR {gameObject.name}: INTERACT | isLocked: {isLocked} | isMoving: {isMoving}");
+
         if (isMoving) return;
 
         if (isLocked)
         {
+            Debug.Log($"DOOR {gameObject.name}: BLOQUEADA, no se abre");
             PlaySound(lockedSound);
             return;
         }
 
         if (!isOpen)
         {
+            Debug.Log($"DOOR {gameObject.name}: ABRIENDO");
             Open();
         }
     }
@@ -106,10 +110,10 @@ public class Door : MonoBehaviour, IInteractable
 
     public void Lock()
     {
+        Debug.Log($"DOOR {gameObject.name}: LOCK llamado");
         isLocked = true;
         ApplyColor();
 
-        // Si está abierta, cerrarla
         if (isOpen)
         {
             isOpen = false;
@@ -120,6 +124,7 @@ public class Door : MonoBehaviour, IInteractable
 
     public void Unlock()
     {
+        Debug.Log($"DOOR {gameObject.name}: UNLOCK llamado");
         isLocked = false;
         ApplyColor();
     }

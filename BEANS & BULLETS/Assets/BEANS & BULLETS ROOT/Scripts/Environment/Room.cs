@@ -8,8 +8,9 @@ public class Room : MonoBehaviour
     [SerializeField] private Door entryDoor;
     [SerializeField] private Door exitDoor;
 
-    [Header("ENTRY POINT")]
+    [Header("CONNECTION POINTS")]
     [SerializeField] private Transform entryPoint;
+    [SerializeField] private Transform exitPoint;
 
     [Header("ENEMIES")]
     [SerializeField] private Transform[] spawnPoints;
@@ -20,29 +21,30 @@ public class Room : MonoBehaviour
     private bool roomActivated;
     private bool roomCompleted;
 
-    private void OnTriggerEnter(Collider other)
+    private void Start()
     {
-        Debug.Log($"Room trigger tocado por: {other.gameObject.name} | Tag: {other.tag}");
-        Debug.Log($"roomActivated: {roomActivated}");
+        // Puerta de entrada: abierta y desbloqueada para que el player entre
+        if (entryDoor != null)
+            entryDoor.Unlock();
 
-        if (roomActivated) return;
-        if (!other.CompareTag("Player")) return;
-
-        Debug.Log("ACTIVANDO SALA");
-        ActivateRoom();
+        // Puerta de salida: cerrada y bloqueada
+        if (exitDoor != null)
+            exitDoor.Lock();
     }
 
-    private void ActivateRoom()
+    // Llamado por LevelManager cuando el player entra
+    public void ActivateRoom()
     {
+        if (roomActivated) return;
         roomActivated = true;
 
         Debug.Log($"Sala activada: {gameObject.name}");
 
-        // Cerrar entrada detrás del player
+        // Cerrar y bloquear entrada (no volver atrás)
         if (entryDoor != null)
             entryDoor.Lock();
 
-        // Bloquear salida
+        // Salida bloqueada
         if (exitDoor != null)
             exitDoor.Lock();
 
@@ -98,12 +100,14 @@ public class Room : MonoBehaviour
         if (GameTimer.Instance != null)
             GameTimer.Instance.SetPaused(true);
 
+        // Desbloquear salida
         if (exitDoor != null)
             exitDoor.Unlock();
+
+        // Notificar al LevelManager que puede empezar a cargar lo siguiente
+        LevelManager.Instance.OnRoomCompleted();
     }
 
-    public Transform GetEntryPoint()
-    {
-        return entryPoint;
-    }
+    public Transform GetEntryPoint() { return entryPoint; }
+    public Transform GetExitPoint() { return exitPoint; }
 }
