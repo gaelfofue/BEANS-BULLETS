@@ -224,11 +224,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6248809168652289912, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6248809168652289912, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -4
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6248809168652289912, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_LocalRotation.w
@@ -515,9 +515,10 @@ MonoBehaviour:
   combatScenes:
   - TestRoomA
   corridorScenes:
-  - 
+  - TestCorridor
   shopScenes: []
-  firstRoomSpawn: {fileID: 85953813}
+  firstSpawnPoint: {fileID: 85953813}
+  maxPiecesAhead: 3
   shopEveryXRooms: 3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

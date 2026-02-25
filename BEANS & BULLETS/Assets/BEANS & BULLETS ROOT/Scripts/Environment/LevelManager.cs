@@ -1,4 +1,7 @@
-ï»¿using System.Collections;
+// LevelManager.cs
+
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -11,27 +14,28 @@ public class LevelManager : MonoBehaviour
     [SerializeField] private string[] corridorScenes;
     [SerializeField] private string[] shopScenes;
 
-    [Header("FIRST ROOM SPAWN")]
-    [SerializeField] private Transform firstRoomSpawn;
+    [Header("SPAWN")]
+    [SerializeField] private Transform firstSpawnPoint;
 
-    [Header("SHOP FREQUENCY")]
+    [Header("CONFIG")]
+    [SerializeField] private int maxPiecesAhead = 3;
     [SerializeField] private int shopEveryXRooms = 3;
 
-    // Tracking de escenas cargadas
-    private string currentRoomScene = "";
-    private string currentCorridorScene = "";
-    private string previousScene = "";
+    // Piezas cargadas en orden
+    private List<LoadedPiece> pieces = new List<LoadedPiece>();
 
-    // Referencias a los scripts de sala/pasillo activos
-    private Room currentRoom;
-    private Corridor currentCorridor;
+    // Dónde conectar la siguiente pieza
+    private Vector3 nextSpawnPosition;
 
-    // Donde conectar la siguiente pieza
-    private Transform nextConnectionPoint;
+    // Índice de la pieza donde está el player
+    private int playerIndex = -1;
 
+    // Control
+    private bool isLoading;
+    private bool nextIsRoom = true;
+    private int roomsCompleted;
     private string lastRoom = "";
     private string lastCorridor = "";
-    private int roomsCompleted;
 
     private void Awake()
     {
@@ -46,183 +50,171 @@ public class LevelManager : MonoBehaviour
         if (GameTimer.Instance != null)
             GameTimer.Instance.SetPaused(true);
 
-        nextConnectionPoint = firstRoomSpawn;
+        nextSpawnPosition = firstSpawnPoint.position;
 
         // Cargar primera sala
-        StartCoroutine(LoadScene(PickNextRoom(), SceneType.Room));
+        StartCoroutine(LoadOnePiece());
     }
 
-    #region EVENTS FROM TRIGGERS
+    // ============================
+    // EVENTS
+    // ============================
 
-    // Player cruza la puerta de entrada de la sala
-    public void OnPlayerEnterRoom()
+    public void OnPlayerEnteredPiece(RoomPiece piece)
     {
-        Debug.Log(">>> Player ENTRÃ“ a la sala");
-
-        if (currentRoom != null)
-            currentRoom.ActivateRoom();
-
-        // Descargar el pasillo anterior (el player ya no lo ve)
-        if (!string.IsNullOrEmpty(previousScene))
+        // Encontrar el índice de esta pieza
+        for (int i = 0; i < pieces.Count; i++)
         {
-            StartCoroutine(UnloadScene(previousScene));
-            previousScene = "";
+            if (pieces[i].piece == piece)
+            {
+                playerIndex = i;
+                break;
+            }
         }
+
+        Debug.Log($"Player en pieza {playerIndex}: {piece.gameObject.name}");
+
+        // Descargar piezas viejas
+        StartCoroutine(UnloadOldPieces());
     }
 
-    // Player cruza la puerta de salida de la sala
-    public void OnPlayerExitRoom()
+    public void StartPreloading()
     {
-        Debug.Log(">>> Player SALIÃ“ de la sala");
-
-        if (GameTimer.Instance != null)
-            GameTimer.Instance.SetPaused(true);
+        StartCoroutine(FillBuffer());
     }
 
-    // Player entra al pasillo
-    public void OnPlayerEnterCorridor()
+    public void OnPieceCompleted()
     {
-        Debug.Log(">>> Player ENTRÃ“ al pasillo");
-
-        // Descargar la sala anterior
-        if (!string.IsNullOrEmpty(previousScene))
-        {
-            StartCoroutine(UnloadScene(previousScene));
-            previousScene = "";
-        }
-    }
-
-    // Player sale del pasillo (entra a la siguiente sala)
-    public void OnPlayerExitCorridor()
-    {
-        Debug.Log(">>> Player SALIÃ“ del pasillo");
-    }
-
-    // Sala completada â†’ empezar a cargar pasillo
-    public void OnRoomCompleted()
-    {
-        Debug.Log(">>> Sala completada, cargando pasillo");
-
         roomsCompleted++;
-
-        // El exitPoint de la sala es donde conecta el pasillo
-        if (currentRoom != null)
-            nextConnectionPoint = currentRoom.GetExitPoint();
-
-        // Marcar sala actual como "anterior" (se descargarÃ¡ cuando entre al pasillo)
-        previousScene = currentRoomScene;
-        currentRoomScene = "";
-
-        // Cargar pasillo
-        StartCoroutine(LoadScene(PickNextCorridor(), SceneType.Corridor));
+        Debug.Log($"Salas completadas: {roomsCompleted}");
     }
 
-    // Pasillo cargado â†’ cargar siguiente sala al final
-    private void OnCorridorLoaded()
+    // ============================
+    // LOADING
+    // ============================
+
+    private IEnumerator FillBuffer()
     {
-        Debug.Log(">>> Pasillo cargado, cargando siguiente sala");
+        while (PiecesAheadOfPlayer() < maxPiecesAhead)
+        {
+            yield return StartCoroutine(LoadOnePiece());
+        }
 
-        if (currentCorridor != null)
-            nextConnectionPoint = currentCorridor.GetExitPoint();
-
-        // Marcar pasillo como "anterior"
-        previousScene = currentCorridorScene;
-        currentCorridorScene = "";
-
-        // Cargar sala
-        string nextRoom = PickNextRoom();
-        StartCoroutine(LoadScene(nextRoom, SceneType.Room));
+        Debug.Log($"Buffer lleno: {PiecesAheadOfPlayer()} piezas adelante");
     }
 
-    #endregion
-
-    #region SCENE LOADING
-
-    private enum SceneType { Room, Corridor }
-
-    private IEnumerator LoadScene(string sceneName, SceneType type)
+    private int PiecesAheadOfPlayer()
     {
-        Debug.Log($"Cargando {type}: {sceneName}");
+        if (playerIndex < 0) return pieces.Count;
+        return pieces.Count - 1 - playerIndex;
+    }
 
+    private IEnumerator LoadOnePiece()
+    {
+        if (isLoading) yield break;
+        isLoading = true;
+
+        // Elegir escena
+        string sceneName;
+        if (nextIsRoom)
+            sceneName = PickNextRoom();
+        else
+            sceneName = PickNextCorridor();
+
+        Debug.Log($"Cargando: {sceneName}");
+
+        // Cargar aditivamente
         AsyncOperation load = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-
         while (!load.isDone)
             yield return null;
 
         yield return null;
 
-        // Encontrar y alinear
+        // Encontrar la escena
         Scene scene = SceneManager.GetSceneByName(sceneName);
-        if (!scene.IsValid()) yield break;
+        if (!scene.IsValid())
+        {
+            isLoading = false;
+            yield break;
+        }
 
         GameObject[] roots = scene.GetRootGameObjects();
 
-        if (type == SceneType.Room)
+        // Encontrar RoomPiece
+        RoomPiece piece = null;
+        foreach (GameObject root in roots)
         {
-            currentRoomScene = sceneName;
-            currentRoom = FindInRoots<Room>(roots);
-
-            if (currentRoom != null && currentRoom.GetEntryPoint() != null)
-            {
-                AlignScene(roots, currentRoom.GetEntryPoint());
-            }
-
-            Debug.Log($"Sala lista: {sceneName}");
+            piece = root.GetComponentInChildren<RoomPiece>();
+            if (piece != null) break;
         }
-        else
+
+        if (piece == null)
         {
-            currentCorridorScene = sceneName;
-            currentCorridor = FindInRoots<Corridor>(roots);
-
-            if (currentCorridor != null && currentCorridor.GetEntryPoint() != null)
-            {
-                AlignScene(roots, currentCorridor.GetEntryPoint());
-            }
-
-            Debug.Log($"Pasillo listo: {sceneName}");
-
-            // Pasillo cargado â†’ cargar sala al final
-            OnCorridorLoaded();
+            Debug.LogError($"No se encontró RoomPiece en {sceneName}");
+            isLoading = false;
+            yield break;
         }
-    }
 
-    private IEnumerator UnloadScene(string sceneName)
-    {
-        if (string.IsNullOrEmpty(sceneName)) yield break;
+        // Calcular offset para alinear
+        Vector3 entryWorldPos = piece.GetEntryPoint().position;
+        Vector3 offset = nextSpawnPosition - entryWorldPos;
 
-        Debug.Log($"Descargando: {sceneName}");
-
-        AsyncOperation unload = SceneManager.UnloadSceneAsync(sceneName);
-        if (unload != null)
-        {
-            while (!unload.isDone)
-                yield return null;
-        }
-    }
-
-    #endregion
-
-    #region ALIGN
-
-    private void AlignScene(GameObject[] roots, Transform entryPoint)
-    {
-        if (nextConnectionPoint == null) return;
-
-        Vector3 offset = nextConnectionPoint.position - entryPoint.position;
-
+        // Mover todos los roots
         foreach (GameObject root in roots)
             root.transform.position += offset;
 
-        Debug.Log($"Escena alineada. Offset: {offset}");
+        // Actualizar siguiente punto de conexión
+        nextSpawnPosition = piece.GetExitPoint().position;
+
+        // Registrar
+        LoadedPiece loaded = new LoadedPiece
+        {
+            sceneName = sceneName,
+            piece = piece,
+            unloaded = false
+        };
+        pieces.Add(loaded);
+
+        // Alternar sala/pasillo
+        nextIsRoom = !nextIsRoom;
+        isLoading = false;
+
+        Debug.Log($"Pieza lista: {sceneName} | Pos: {piece.transform.position} | Total: {pieces.Count}");
     }
 
-    #endregion
+    // ============================
+    // UNLOADING
+    // ============================
 
-    #region PICKING
+    private IEnumerator UnloadOldPieces()
+    {
+        for (int i = 0; i < playerIndex - 1; i++)
+        {
+            if (i >= pieces.Count) break;
+
+            LoadedPiece p = pieces[i];
+            if (p.unloaded) continue;
+
+            Debug.Log($"Descargando: {p.sceneName}");
+
+            AsyncOperation unload = SceneManager.UnloadSceneAsync(p.sceneName);
+            if (unload != null)
+            {
+                while (!unload.isDone)
+                    yield return null;
+            }
+
+            p.unloaded = true;
+            pieces[i] = p;
+        }
+    }
+
+    // ============================
+    // PICKING
+    // ============================
 
     private string PickNextRoom()
     {
-        // Toca tienda?
         if (shopScenes.Length > 0 && roomsCompleted > 0 && roomsCompleted % shopEveryXRooms == 0)
             return shopScenes[Random.Range(0, shopScenes.Length)];
 
@@ -236,15 +228,10 @@ public class LevelManager : MonoBehaviour
 
     private string PickRandom(string[] scenes, ref string last)
     {
-        if (scenes.Length == 0)
-        {
-            Debug.LogError("No hay escenas configuradas");
-            return "";
-        }
+        if (scenes.Length == 0) return "";
 
         string chosen = "";
         int attempts = 0;
-
         do
         {
             chosen = scenes[Random.Range(0, scenes.Length)];
@@ -256,21 +243,16 @@ public class LevelManager : MonoBehaviour
         return chosen;
     }
 
-    #endregion
-
-    #region HELPERS
-
-    private T FindInRoots<T>(GameObject[] roots) where T : Component
-    {
-        foreach (GameObject root in roots)
-        {
-            T component = root.GetComponentInChildren<T>();
-            if (component != null) return component;
-        }
-        return null;
-    }
-
     public int GetRoomsCompleted() { return roomsCompleted; }
 
-    #endregion
+    // ============================
+    // DATA
+    // ============================
+
+    private struct LoadedPiece
+    {
+        public string sceneName;
+        public RoomPiece piece;
+        public bool unloaded;
+    }
 }

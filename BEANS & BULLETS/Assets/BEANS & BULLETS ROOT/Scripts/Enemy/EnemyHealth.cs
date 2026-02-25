@@ -9,14 +9,14 @@ public class EnemyHealth : MonoBehaviour
     [Header("Feedback")]
     public GameObject deathEffect;
 
-    private Room myRoom;
+    private RoomPiece myRoom;
 
     void Start()
     {
         currentHealth = maxHealth;
     }
 
-    public void SetRoom(Room room)
+    public void SetRoom(RoomPiece room)
     {
         myRoom = room;
     }
@@ -27,27 +27,19 @@ public class EnemyHealth : MonoBehaviour
         StartCoroutine(DamageFlash());
 
         if (currentHealth <= 0)
-        {
             Die();
-        }
     }
 
     private void Die()
     {
         if (deathEffect != null)
-        {
             Instantiate(deathEffect, transform.position, Quaternion.identity);
-        }
 
         if (GameTimer.Instance != null)
-        {
             GameTimer.Instance.AddKillTime();
-        }
 
         if (myRoom != null)
-        {
             myRoom.OnEnemyDied(this);
-        }
 
         Destroy(gameObject);
     }
