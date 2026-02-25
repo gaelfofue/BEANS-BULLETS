@@ -172,10 +172,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoomPiece
   pieceType: 0
-  entryPoint: {fileID: 2089480347}
-  exitPoint: {fileID: 1443917878}
-  entryDoor: {fileID: 409597680}
-  exitDoor: {fileID: 1709732676}
+  entryPoint: {fileID: 1443917878}
+  exitPoint: {fileID: 2089480347}
+  entryDoor: {fileID: 1709732676}
+  exitDoor: {fileID: 409597680}
   spawnPoints:
   - {fileID: 1374494913}
   enemyPrefab: {fileID: 1530939797626231895, guid: e7847f5e39eed05478bcb8fa51aba6a7, type: 3}
@@ -1871,7 +1871,7 @@ Transform:
   m_GameObject: {fileID: 1391669523}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.00999999, y: -0.01999998, z: 2.7}
+  m_LocalPosition: {x: -0.00999999, y: -0.01999998, z: -1.08}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

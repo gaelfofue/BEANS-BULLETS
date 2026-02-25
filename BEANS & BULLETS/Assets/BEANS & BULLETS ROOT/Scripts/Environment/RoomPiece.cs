@@ -53,26 +53,22 @@ public class RoomPiece : MonoBehaviour
 
         if (pieceType == PieceType.Combat)
         {
-            // Cerrar entrada
             if (entryDoor != null) entryDoor.Lock();
-
-            // Bloquear salida
             if (exitDoor != null) exitDoor.Lock();
 
-            // Timer activo
             if (GameTimer.Instance != null)
                 GameTimer.Instance.SetPaused(false);
 
             SpawnEnemies();
 
-            // Avisar al LevelManager que empiece a precargar
-            LevelManager.Instance.StartPreloading();
+            // YA NO llamamos StartPreloading aquí
         }
         else if (pieceType == PieceType.Corridor)
         {
-            // Timer pausado en pasillo
             if (GameTimer.Instance != null)
                 GameTimer.Instance.SetPaused(true);
+
+            LevelManager.Instance.OnPlayerEnteredCorridor();
         }
         else if (pieceType == PieceType.Shop)
         {
@@ -81,7 +77,6 @@ public class RoomPiece : MonoBehaviour
             if (GameTimer.Instance != null)
                 GameTimer.Instance.SetPaused(true);
 
-            // Tienda: salida abierta directamente
             if (exitDoor != null) exitDoor.Unlock();
         }
     }
@@ -132,6 +127,9 @@ public class RoomPiece : MonoBehaviour
             exitDoor.Unlock();
 
         LevelManager.Instance.OnPieceCompleted();
+
+        // Precargar la siguiente pieza AHORA
+        LevelManager.Instance.LoadNext();
     }
 
     // === GETTERS ===

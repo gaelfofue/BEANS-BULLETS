@@ -1,3 +1,5 @@
+// PieceTrigger.cs
+
 using UnityEngine;
 
 public class PieceTrigger : MonoBehaviour
@@ -7,7 +9,6 @@ public class PieceTrigger : MonoBehaviour
 
     private void Start()
     {
-        // Buscar el RoomPiece en el padre
         myPiece = GetComponentInParent<RoomPiece>();
     }
 
@@ -21,6 +22,13 @@ public class PieceTrigger : MonoBehaviour
         if (myPiece != null)
         {
             Debug.Log($"Player entró a: {myPiece.gameObject.name}");
+
+            // Si es una sala y la pieza anterior era un pasillo, avisar
+            if (myPiece.GetPieceType() != RoomPiece.PieceType.Corridor)
+            {
+                LevelManager.Instance.OnPlayerExitedCorridor();
+            }
+
             myPiece.Activate();
             LevelManager.Instance.OnPlayerEnteredPiece(myPiece);
         }

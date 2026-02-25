@@ -1,4 +1,4 @@
-// LevelManager.cs
+// LevelManager.cs (REEMPLAZAR COMPLETO)
 
 using System.Collections;
 using System.Collections.Generic;
@@ -9,28 +9,20 @@ public class LevelManager : MonoBehaviour
 {
     public static LevelManager Instance { get; private set; }
 
-    [Header("SCENES")]
+    [Header("=== SCENES ===")]
     [SerializeField] private string[] combatScenes;
     [SerializeField] private string[] corridorScenes;
     [SerializeField] private string[] shopScenes;
 
-    [Header("SPAWN")]
+    [Header("=== SPAWN ===")]
     [SerializeField] private Transform firstSpawnPoint;
 
-    [Header("CONFIG")]
-    [SerializeField] private int maxPiecesAhead = 3;
+    [Header("=== SHOP FREQUENCY ===")]
     [SerializeField] private int shopEveryXRooms = 3;
 
-    // Piezas cargadas en orden
     private List<LoadedPiece> pieces = new List<LoadedPiece>();
-
-    // Dónde conectar la siguiente pieza
     private Vector3 nextSpawnPosition;
-
-    // Índice de la pieza donde está el player
     private int playerIndex = -1;
-
-    // Control
     private bool isLoading;
     private bool nextIsRoom = true;
     private int roomsCompleted;
@@ -52,8 +44,7 @@ public class LevelManager : MonoBehaviour
 
         nextSpawnPosition = firstSpawnPoint.position;
 
-        // Cargar primera sala
-        StartCoroutine(LoadOnePiece());
+        StartCoroutine(LoadNextPiece());
     }
 
     // ============================
@@ -62,7 +53,6 @@ public class LevelManager : MonoBehaviour
 
     public void OnPlayerEnteredPiece(RoomPiece piece)
     {
-        // Encontrar el índice de esta pieza
         for (int i = 0; i < pieces.Count; i++)
         {
             if (pieces[i].piece == piece)
@@ -73,14 +63,6 @@ public class LevelManager : MonoBehaviour
         }
 
         Debug.Log($"Player en pieza {playerIndex}: {piece.gameObject.name}");
-
-        // Descargar piezas viejas
-        StartCoroutine(UnloadOldPieces());
-    }
-
-    public void StartPreloading()
-    {
-        StartCoroutine(FillBuffer());
     }
 
     public void OnPieceCompleted()
@@ -89,32 +71,39 @@ public class LevelManager : MonoBehaviour
         Debug.Log($"Salas completadas: {roomsCompleted}");
     }
 
+    public void OnPlayerEnteredCorridor()
+    {
+        Debug.Log("Player en pasillo, descargando piezas viejas");
+        StartCoroutine(UnloadOldPieces());
+
+        // Cargar la siguiente sala
+        LoadNext();
+    }
+
+    public void OnPlayerExitedCorridor()
+    {
+        Debug.Log("Player salió del pasillo");
+        StartCoroutine(UnloadOldPieces());
+    }
+
+    // Llamado cuando se completa una sala o cuando se necesita la siguiente pieza
+    public void LoadNext()
+    {
+        if (!isLoading)
+        {
+            StartCoroutine(LoadNextPiece());
+        }
+    }
+
     // ============================
     // LOADING
     // ============================
 
-    private IEnumerator FillBuffer()
-    {
-        while (PiecesAheadOfPlayer() < maxPiecesAhead)
-        {
-            yield return StartCoroutine(LoadOnePiece());
-        }
-
-        Debug.Log($"Buffer lleno: {PiecesAheadOfPlayer()} piezas adelante");
-    }
-
-    private int PiecesAheadOfPlayer()
-    {
-        if (playerIndex < 0) return pieces.Count;
-        return pieces.Count - 1 - playerIndex;
-    }
-
-    private IEnumerator LoadOnePiece()
+    private IEnumerator LoadNextPiece()
     {
         if (isLoading) yield break;
         isLoading = true;
 
-        // Elegir escena
         string sceneName;
         if (nextIsRoom)
             sceneName = PickNextRoom();
@@ -123,14 +112,12 @@ public class LevelManager : MonoBehaviour
 
         Debug.Log($"Cargando: {sceneName}");
 
-        // Cargar aditivamente
         AsyncOperation load = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
         while (!load.isDone)
             yield return null;
 
         yield return null;
 
-        // Encontrar la escena
         Scene scene = SceneManager.GetSceneByName(sceneName);
         if (!scene.IsValid())
         {
@@ -140,7 +127,6 @@ public class LevelManager : MonoBehaviour
 
         GameObject[] roots = scene.GetRootGameObjects();
 
-        // Encontrar RoomPiece
         RoomPiece piece = null;
         foreach (GameObject root in roots)
         {
@@ -150,36 +136,41 @@ public class LevelManager : MonoBehaviour
 
         if (piece == null)
         {
-            Debug.LogError($"No se encontró RoomPiece en {sceneName}");
             isLoading = false;
             yield break;
         }
 
-        // Calcular offset para alinear
-        Vector3 entryWorldPos = piece.GetEntryPoint().position;
-        Vector3 offset = nextSpawnPosition - entryWorldPos;
+        // Alinear
+        Vector3 entryLocalOffset = piece.GetEntryPoint().position - piece.transform.position;
+        Vector3 rootTargetPos = nextSpawnPosition - entryLocalOffset;
+        Vector3 offset = rootTargetPos - piece.transform.position;
 
-        // Mover todos los roots
         foreach (GameObject root in roots)
             root.transform.position += offset;
 
-        // Actualizar siguiente punto de conexión
+        // Rebake NavMesh
+        foreach (GameObject root in roots)
+        {
+            var surfaces = root.GetComponentsInChildren<Unity.AI.Navigation.NavMeshSurface>();
+            foreach (var surface in surfaces)
+            {
+                surface.BuildNavMesh();
+            }
+        }
+
         nextSpawnPosition = piece.GetExitPoint().position;
 
-        // Registrar
-        LoadedPiece loaded = new LoadedPiece
+        pieces.Add(new LoadedPiece
         {
             sceneName = sceneName,
             piece = piece,
             unloaded = false
-        };
-        pieces.Add(loaded);
+        });
 
-        // Alternar sala/pasillo
         nextIsRoom = !nextIsRoom;
         isLoading = false;
 
-        Debug.Log($"Pieza lista: {sceneName} | Pos: {piece.transform.position} | Total: {pieces.Count}");
+        Debug.Log($"Pieza lista: {sceneName} en Z={piece.GetEntryPoint().position.z:F1} | Total: {pieces.Count}");
     }
 
     // ============================
@@ -244,10 +235,6 @@ public class LevelManager : MonoBehaviour
     }
 
     public int GetRoomsCompleted() { return roomsCompleted; }
-
-    // ============================
-    // DATA
-    // ============================
 
     private struct LoadedPiece
     {
