@@ -504,18 +504,6 @@ PrefabInstance:
       propertyPath: crosshairUI
       value: 
       objectReference: {fileID: 699198729}
-    - target: {fileID: 2578529339699003369, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
-      propertyPath: jumpForce
-      value: 5
-      objectReference: {fileID: 0}
-    - target: {fileID: 6199316270643307607, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
-      propertyPath: xSensitivity
-      value: 0.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 6199316270643307607, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
-      propertyPath: ySensitivity
-      value: 0.5
-      objectReference: {fileID: 0}
     - target: {fileID: 6248809168652289912, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

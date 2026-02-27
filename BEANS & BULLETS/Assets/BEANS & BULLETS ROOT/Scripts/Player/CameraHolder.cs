@@ -7,10 +7,7 @@ public class CameraHolder : MonoBehaviour
 
     void LateUpdate()
     {
-        // Copiar posición del player
         transform.position = player.position;
-
-        // Copiar rotación horizontal de orientation
         transform.rotation = Quaternion.Euler(0f, orientation.eulerAngles.y, 0f);
     }
 }

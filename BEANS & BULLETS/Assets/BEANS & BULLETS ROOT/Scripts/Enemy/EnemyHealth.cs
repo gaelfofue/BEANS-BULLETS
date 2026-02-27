@@ -40,6 +40,7 @@ public class EnemyHealth : MonoBehaviour
             GameTimer.Instance.AddKillTime();
 
         FindObjectOfType<GameOverManager>()?.RegisterKill();
+        FindObjectOfType<HUDController>()?.RegisterKill();  // NUEVA
 
         if (myRoom != null)
             myRoom.OnEnemyDied(this);

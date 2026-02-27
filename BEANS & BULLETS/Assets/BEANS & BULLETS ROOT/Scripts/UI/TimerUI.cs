@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class TimerUI : MonoBehaviour
 {
     [Header("References")]
     public Image timerBar;
+    public TextMeshProUGUI timerText;  // NUEVO
 
     [Header("Colors")]
     public Color safeColor = Color.green;
@@ -26,19 +28,29 @@ public class TimerUI : MonoBehaviour
         RectTransform rt = timerBar.GetComponent<RectTransform>();
         rt.localScale = new Vector3(percent, 1, 1);
 
+        // Actualizar texto
+        if (timerText != null && GameTimer.Instance != null)
+        {
+            int seconds = Mathf.CeilToInt(GameTimer.Instance.GetCurrentTime());
+            timerText.text = seconds.ToString();
+        }
+
         if (percent > warningPercent)
         {
             timerBar.color = safeColor;
+            if (timerText != null) timerText.color = safeColor;
             isPulsing = false;
         }
         else if (percent > dangerPercent)
         {
             timerBar.color = warningColor;
+            if (timerText != null) timerText.color = warningColor;
             isPulsing = false;
         }
         else
         {
             timerBar.color = dangerColor;
+            if (timerText != null) timerText.color = dangerColor;
             isPulsing = true;
         }
     }
