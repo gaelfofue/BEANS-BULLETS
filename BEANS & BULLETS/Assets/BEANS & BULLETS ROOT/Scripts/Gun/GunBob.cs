@@ -12,19 +12,15 @@ public class GunBob : MonoBehaviour
 
     private float bobCycle = 0f;
     private Vector3 originPos;
-    private Rigidbody playerRb;
 
     void Start()
     {
         originPos = transform.localPosition;
-
-        if (playerMovement != null)
-            playerRb = playerMovement.GetComponent<Rigidbody>();
     }
 
-    void Update()
+    void LateUpdate()
     {
-        if (playerMovement == null || playerRb == null) return;
+        if (playerMovement == null) return;
 
         HalfLifeBob();
     }
@@ -35,12 +31,10 @@ public class GunBob : MonoBehaviour
 
         if (playerMovement.IsMoving())
         {
-            float speed = new Vector2(
-                playerRb.linearVelocity.x,
-                playerRb.linearVelocity.z
-            ).magnitude;
-
-            float normalizedSpeed = Mathf.Clamp01(speed / playerMovement.maxSpeed);
+            // Usar Speed del CharacterController en vez de Rigidbody
+            float normalizedSpeed = Mathf.Clamp01(
+                playerMovement.Speed / playerMovement.maxSpeed
+            );
 
             bobCycle += Time.deltaTime * bobSpeed;
 

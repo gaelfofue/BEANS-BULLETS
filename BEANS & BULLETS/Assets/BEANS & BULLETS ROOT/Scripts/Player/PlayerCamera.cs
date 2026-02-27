@@ -5,17 +5,15 @@ public class PlayerCamera : MonoBehaviour
 {
     [Header("References")]
     public Transform orientation;
-    public PlayerMovement playerMovement; // Para saber si camina
+    public PlayerMovement playerMovement;
 
     [Header("Sensitivity")]
-    [Range(1f, 100f)]
-    public float sensitivity = 50f;
-    [Range(0.1f, 2f)]
-    public float sensMultiplier = 1f;
+    [SerializeField] private float xSensitivity = 0.07f;
+    [SerializeField] private float ySensitivity = 0.07f;
 
     [Header("Clamp")]
-    public float topClamp = 90f;
-    public float bottomClamp = -90f;
+    [SerializeField] private float minX = -90f;
+    [SerializeField] private float maxX = 90f;
 
     [Header("Head Bob")]
     public bool enableHeadBob = true;
@@ -27,51 +25,58 @@ public class PlayerCamera : MonoBehaviour
     // Input
     private Vector2 lookInput;
 
-    // Private
-    private float xRotation;
-    private float yRotation;
+    // Rotación acumulada
+    private float xRotation = 0f;  // Vertical (arriba/abajo)
+    private float yRotation = 0f;  // Horizontal (izq/der)
 
-    void Start()
+    private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
         defaultYPos = transform.localPosition.y;
+
+        // Inicializar con la rotación actual
+        yRotation = orientation.eulerAngles.y;
     }
 
-    void Update()
+    #region INPUT EVENT
+
+    public void OnLook(InputAction.CallbackContext context)
+    {
+        lookInput = context.ReadValue<Vector2>();
+    }
+
+    #endregion
+
+    private void Update()
     {
         Look();
         if (enableHeadBob) HeadBob();
     }
 
-    #region INPUT EVENT
-    public void OnLook(InputAction.CallbackContext context)
-    {
-        lookInput = context.ReadValue<Vector2>();
-    }
-    #endregion
-
     #region CAMERA ROTATION
+
     private void Look()
     {
-        float mouseX = lookInput.x * sensitivity * Time.deltaTime * sensMultiplier;
-        float mouseY = lookInput.y * sensitivity * Time.deltaTime * sensMultiplier;
+        // Acumular rotación
+        yRotation += lookInput.x * xSensitivity;
+        xRotation -= lookInput.y * ySensitivity;
 
-        yRotation += mouseX;
+        // Clamp vertical
+        xRotation = Mathf.Clamp(xRotation, minX, maxX);
 
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, bottomClamp, topClamp);
+        // Cámara: solo rotación vertical (la horizontal viene del CameraHolder)
+        transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
 
-        // Rotar camara (arriba/abajo + izq/der)
-        transform.localRotation = Quaternion.Euler(xRotation, yRotation, 0);
-
-        // Rotar orientation (solo izq/der, para que 
-        // el movimiento sepa hacia donde mira)
-        orientation.localRotation = Quaternion.Euler(0, yRotation, 0);
+        // Orientation: rotación horizontal para el movimiento
+        orientation.localRotation = Quaternion.Euler(0f, yRotation, 0f);
     }
+
     #endregion
 
     #region HEAD BOB
+
     private void HeadBob()
     {
         if (!playerMovement.IsMoving())
@@ -88,5 +93,6 @@ public class PlayerCamera : MonoBehaviour
         newPos.y = defaultYPos + Mathf.Sin(bobTimer) * bobAmplitude;
         transform.localPosition = newPos;
     }
+
     #endregion
 }

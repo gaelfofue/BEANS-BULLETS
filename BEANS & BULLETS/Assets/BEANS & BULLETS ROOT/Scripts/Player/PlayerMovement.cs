@@ -1,57 +1,59 @@
-using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
 {
+    [Header("Movement - Ground")]
+    [SerializeField] private float groundMaxSpeed = 7f;
+    [SerializeField] private float groundAcceleration = 14f;
+    [SerializeField] private float groundDeceleration = 10f;
+    [SerializeField] private float friction = 6f;
+
+    [Header("Movement - Air")]
+    [SerializeField] private float airMaxSpeed = 7f;
+    [SerializeField] private float airAcceleration = 2f;
+    [SerializeField] private float airDeceleration = 2f;
+
+    [Header("Movement - Strafe (Air)")]
+    [SerializeField] private float strafeMaxSpeed = 1f;
+    [SerializeField] private float strafeAcceleration = 50f;
+
+    [Header("Air Control")]
+    [SerializeField] private float airControl = 0.3f;
+
+    [Header("Jumping")]
+    [SerializeField] private float jumpForce = 8f;
+    [SerializeField] private bool autoBunnyHop = false;
+
+    [Header("Physics")]
+    [SerializeField] private float gravity = 20f;
+
     [Header("References")]
     public Transform orientation;
 
-    [Header("Movement")]
-    public float moveSpeed = 4500f;
-    public float maxSpeed = 14f;
-    public float counterMovement = 0.175f;
-    private float threshold = 0.01f;
+    // Público para GunBob y GunTilt
+    public float maxSpeed => groundMaxSpeed;
+    public float Speed => new Vector3(playerVelocity.x, 0f, playerVelocity.z).magnitude;
 
-    [Header("Jumping")]
-    public float jumpForce = 550f;
-    public float jumpCooldown = 0.1f;
-    private bool readyToJump = true;
-
-    [Header("Ground")]
-    public bool grounded;
-    public LayerMask whatIsGround;
-    public float maxSlopeAngle = 35f;
-
-    [Header("Air Control")]
-    [Range(0.1f, 1f)]
-    public float airMultiplier = 0.7f;
+    // Privado
+    private CharacterController controller;
+    private Vector3 playerVelocity = Vector3.zero;
+    private Vector3 moveDirectionNorm = Vector3.zero;
+    private bool jumpQueued = false;
 
     // Input
     private Vector2 moveInput;
-    private bool jumping;
+    private bool jumpHeld = false;
+    private bool jumpPressed = false;
 
-    // Private
-    private Rigidbody rb;
-    private Vector3 normalVector = Vector3.up;
-    private bool cancellingGrounded;
-
-    void Awake()
+    private void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-    }
-
-    void FixedUpdate()
-    {
-        Movement();
-    }
-
-    public Vector2 GetMoveInput()
-    {
-        return moveInput;
+        controller = GetComponent<CharacterController>();
     }
 
     #region INPUT EVENTS
+
     public void OnMove(InputAction.CallbackContext context)
     {
         moveInput = context.ReadValue<Vector2>();
@@ -59,150 +61,238 @@ public class PlayerMovement : MonoBehaviour
 
     public void OnJump(InputAction.CallbackContext context)
     {
-        if (context.performed) jumping = true;
-        if (context.canceled) jumping = false;
-    }
-    #endregion
-
-    #region MOVEMENT
-    private void Movement()
-    {
-        float x = moveInput.x;
-        float y = moveInput.y;
-
-        Vector2 mag = FindVelRelativeToLook();
-        float xMag = mag.x, yMag = mag.y;
-
-        CounterMovement(x, y, mag);
-
-        if (readyToJump && jumping) Jump();
-
-        if (x > 0 && xMag > maxSpeed) x = 0;
-        if (x < 0 && xMag < -maxSpeed) x = 0;
-        if (y > 0 && yMag > maxSpeed) y = 0;
-        if (y < 0 && yMag < -maxSpeed) y = 0;
-
-        float multiplier = 1f, multiplierV = 1f;
-
-        if (!grounded)
+        if (context.performed)
         {
-            multiplier = airMultiplier;
-            multiplierV = airMultiplier;
+            jumpHeld = true;
+            jumpPressed = true;
         }
 
-        rb.AddForce(orientation.forward * y * moveSpeed * Time.deltaTime * multiplier * multiplierV);
-        rb.AddForce(orientation.right * x * moveSpeed * Time.deltaTime * multiplier);
+        if (context.canceled)
+        {
+            jumpHeld = false;
+        }
     }
+
     #endregion
-    
+
+    private void Update()
+    {
+        QueueJump();
+
+        if (controller.isGrounded)
+        {
+            GroundMove();
+        }
+        else
+        {
+            AirMove();
+        }
+
+        controller.Move(playerVelocity * Time.deltaTime);
+    }
+
     #region JUMP
-    private void Jump()
+
+    private void QueueJump()
     {
-        if (!grounded || !readyToJump) return;
+        if (autoBunnyHop)
+        {
+            jumpQueued = jumpHeld;
+            return;
+        }
 
-        readyToJump = false;
+        if (jumpPressed)
+        {
+            jumpQueued = true;
+        }
 
-        rb.AddForce(Vector2.up * jumpForce * 1.5f);
-        rb.AddForce(normalVector * jumpForce * 0.5f);
-
-        Vector3 vel = rb.linearVelocity;
-        if (vel.y < 0.5f)
-            rb.linearVelocity = new Vector3(vel.x, 0, vel.z);
-        else if (vel.y > 0)
-            rb.linearVelocity = new Vector3(vel.x, vel.y / 2, vel.z);
-
-        Invoke(nameof(ResetJump), jumpCooldown);
+        jumpPressed = false;
     }
 
-    private void ResetJump()
-    {
-        readyToJump = true;
-    }
     #endregion
 
-    #region COUNTER MOVEMENT
-    private void CounterMovement(float x, float y, Vector2 mag)
+    #region GROUND MOVEMENT
+
+    private void GroundMove()
     {
-        if (!grounded || jumping) return;
-
-        if (Math.Abs(mag.x) > threshold && Math.Abs(x) < 0.05f ||
-            (mag.x < -threshold && x > 0) || (mag.x > threshold && x < 0))
+        if (!jumpQueued)
         {
-            rb.AddForce(moveSpeed * orientation.right * Time.deltaTime * -mag.x * counterMovement);
+            ApplyFriction(1.0f);
         }
-        if (Math.Abs(mag.y) > threshold && Math.Abs(y) < 0.05f ||
-            (mag.y < -threshold && y > 0) || (mag.y > threshold && y < 0))
+        else
         {
-            rb.AddForce(moveSpeed * orientation.forward * Time.deltaTime * -mag.y * counterMovement);
+            ApplyFriction(0f);
         }
 
-        float horizontalSpeed = new Vector2(rb.linearVelocity.x, rb.linearVelocity.z).magnitude;
-        if (horizontalSpeed > maxSpeed)
+        Vector3 wishdir = new Vector3(moveInput.x, 0f, moveInput.y);
+        wishdir = orientation.TransformDirection(wishdir);
+        wishdir.Normalize();
+        moveDirectionNorm = wishdir;
+
+        float wishspeed = wishdir.magnitude * groundMaxSpeed;
+
+        Accelerate(wishdir, wishspeed, groundAcceleration);
+
+        // Gravedad mínima para mantener isGrounded
+        playerVelocity.y = -gravity * Time.deltaTime;
+
+        if (jumpQueued)
         {
-            float fallspeed = rb.linearVelocity.y;
-            Vector3 n = rb.linearVelocity.normalized * maxSpeed;
-            rb.linearVelocity = new Vector3(n.x, fallspeed, n.z);
+            // Resetear velocidad vertical antes de saltar
+            playerVelocity.y = jumpForce;
+            jumpQueued = false;
         }
     }
+
+    #endregion
+
+    #region AIR MOVEMENT
+
+    private void AirMove()
+    {
+        float accel;
+
+        Vector3 wishdir = new Vector3(moveInput.x, 0f, moveInput.y);
+        wishdir = orientation.TransformDirection(wishdir);
+
+        float wishspeed = wishdir.magnitude;
+        wishspeed *= airMaxSpeed;
+
+        wishdir.Normalize();
+        moveDirectionNorm = wishdir;
+
+        float wishspeed2 = wishspeed;
+        if (Vector3.Dot(playerVelocity, wishdir) < 0)
+        {
+            accel = airDeceleration;
+        }
+        else
+        {
+            accel = airAcceleration;
+        }
+
+        if (moveInput.y == 0 && moveInput.x != 0)
+        {
+            if (wishspeed > strafeMaxSpeed)
+            {
+                wishspeed = strafeMaxSpeed;
+            }
+            accel = strafeAcceleration;
+        }
+
+        Accelerate(wishdir, wishspeed, accel);
+
+        if (airControl > 0)
+        {
+            AirControl(wishdir, wishspeed2);
+        }
+
+        playerVelocity.y -= gravity * Time.deltaTime;
+    }
+
+    private void AirControl(Vector3 targetDir, float targetSpeed)
+    {
+        if (Mathf.Abs(moveInput.y) < 0.001f || Mathf.Abs(targetSpeed) < 0.001f)
+        {
+            return;
+        }
+
+        float zSpeed = playerVelocity.y;
+        playerVelocity.y = 0;
+
+        float speed = playerVelocity.magnitude;
+        playerVelocity.Normalize();
+
+        float dot = Vector3.Dot(playerVelocity, targetDir);
+        float k = 32f;
+        k *= airControl * dot * dot * Time.deltaTime;
+
+        if (dot > 0)
+        {
+            playerVelocity.x *= speed + targetDir.x * k;
+            playerVelocity.y *= speed + targetDir.y * k;
+            playerVelocity.z *= speed + targetDir.z * k;
+
+            playerVelocity.Normalize();
+            moveDirectionNorm = playerVelocity;
+        }
+
+        playerVelocity.x *= speed;
+        playerVelocity.y = zSpeed;
+        playerVelocity.z *= speed;
+    }
+
+    #endregion
+
+    #region PHYSICS
+
+    private void Accelerate(Vector3 targetDir, float targetSpeed, float accel)
+    {
+        float currentSpeed = Vector3.Dot(playerVelocity, targetDir);
+        float addSpeed = targetSpeed - currentSpeed;
+
+        if (addSpeed <= 0) return;
+
+        float accelSpeed = accel * Time.deltaTime * targetSpeed;
+        if (accelSpeed > addSpeed)
+        {
+            accelSpeed = addSpeed;
+        }
+
+        playerVelocity.x += accelSpeed * targetDir.x;
+        playerVelocity.z += accelSpeed * targetDir.z;
+    }
+
+    private void ApplyFriction(float t)
+    {
+        Vector3 vec = playerVelocity;
+        vec.y = 0f;
+        float speed = vec.magnitude;
+        float drop = 0f;
+
+        if (controller.isGrounded)
+        {
+            float control = speed < groundDeceleration ? groundDeceleration : speed;
+            drop = control * friction * Time.deltaTime * t;
+        }
+
+        float newSpeed = speed - drop;
+        if (newSpeed < 0) newSpeed = 0;
+        if (speed > 0) newSpeed /= speed;
+
+        playerVelocity.x *= newSpeed;
+        playerVelocity.z *= newSpeed;
+    }
+
     #endregion
 
     #region HELPERS
+
+    public bool IsMoving()
+    {
+        return controller.isGrounded &&
+               (Mathf.Abs(moveInput.x) > 0.01f || Mathf.Abs(moveInput.y) > 0.01f);
+    }
+
     public Vector2 FindVelRelativeToLook()
     {
         float lookAngle = orientation.eulerAngles.y;
-        float moveAngle = Mathf.Atan2(rb.linearVelocity.x, rb.linearVelocity.z) * Mathf.Rad2Deg;
+        float moveAngle = Mathf.Atan2(playerVelocity.x, playerVelocity.z) * Mathf.Rad2Deg;
 
         float u = Mathf.DeltaAngle(lookAngle, moveAngle);
         float v = 90 - u;
 
-        float magnitude = rb.linearVelocity.magnitude;
+        float magnitude = new Vector2(playerVelocity.x, playerVelocity.z).magnitude;
         float yMag = magnitude * Mathf.Cos(u * Mathf.Deg2Rad);
         float xMag = magnitude * Mathf.Cos(v * Mathf.Deg2Rad);
 
         return new Vector2(xMag, yMag);
     }
 
-    // Esto lo necesita PlayerCamera para saber 
-    // si el jugador camina (head bob)
-    public bool IsMoving()
+    public Vector2 GetMoveInput()
     {
-        return grounded && (moveInput.x != 0 || moveInput.y != 0);
-    }
-    #endregion
-
-    #region GROUND DETECTION
-    private bool IsFloor(Vector3 v)
-    {
-        return Vector3.Angle(Vector3.up, v) < maxSlopeAngle;
+        return moveInput;
     }
 
-    private void OnCollisionStay(Collision other)
-    {
-        int layer = other.gameObject.layer;
-        if (whatIsGround != (whatIsGround | (1 << layer))) return;
-
-        for (int i = 0; i < other.contactCount; i++)
-        {
-            Vector3 normal = other.contacts[i].normal;
-            if (IsFloor(normal))
-            {
-                grounded = true;
-                cancellingGrounded = false;
-                normalVector = normal;
-                CancelInvoke(nameof(StopGrounded));
-            }
-        }
-
-        if (!cancellingGrounded)
-        {
-            cancellingGrounded = true;
-            Invoke(nameof(StopGrounded), Time.deltaTime * 3f);
-        }
-    }
-
-    private void StopGrounded()
-    {
-        grounded = false;
-    }
     #endregion
 }

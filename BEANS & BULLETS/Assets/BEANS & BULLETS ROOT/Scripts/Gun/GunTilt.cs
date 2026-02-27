@@ -1,4 +1,3 @@
-// GunTilt.cs en el GunHolder
 using UnityEngine;
 
 public class GunTilt : MonoBehaviour
@@ -10,14 +9,10 @@ public class GunTilt : MonoBehaviour
     public float tiltAmount = 2f;
     public float tiltSmooth = 6f;
 
-    private Quaternion originRot;
     private float currentTilt = 0f;
 
-    void Start()
-    {
-        originRot = transform.localRotation;
-    }
-
+    // YA NO se guarda originRot porque este objeto
+    // empieza en rotación identity y solo hace tilt
     void Update()
     {
         if (playerMovement == null) return;
@@ -36,6 +31,8 @@ public class GunTilt : MonoBehaviour
             Time.deltaTime * tiltSmooth
         );
 
-        transform.localRotation = originRot * Quaternion.Euler(0, 0, currentTilt);
+        // Escribe en SU propio transform (GunTiltPivot)
+        // No pisa a GunSway que está en el padre
+        transform.localRotation = Quaternion.Euler(0f, 0f, currentTilt);
     }
 }

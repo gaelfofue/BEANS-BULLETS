@@ -3,11 +3,11 @@ using UnityEngine.InputSystem;
 
 public class GunSway : MonoBehaviour
 {
-    [Header("Sway Settings")]
-    public float swayAmount = 0.002f;
-    public float maxSway = 0.04f;
-    public float smoothSpeed = 4f;
-    public float returnSpeed = 6f;
+    [Header("GoldenEye Sway")]
+    [SerializeField] private float swayAmount = 0.003f;
+    [SerializeField] private float maxSway = 0.06f;
+    [SerializeField] private float smoothSpeed = 3f;
+    [SerializeField] private float returnSpeed = 2f;
 
     // Input
     private Vector2 lookInput;
@@ -16,7 +16,7 @@ public class GunSway : MonoBehaviour
     private Vector3 originPos;
     private Vector3 currentSway;
 
-    void Start()
+    private void Start()
     {
         originPos = transform.localPosition;
     }
@@ -26,27 +26,27 @@ public class GunSway : MonoBehaviour
         lookInput = context.ReadValue<Vector2>();
     }
 
-    void Update()
+    private void LateUpdate()
     {
-        // El arma se mueve en dirección OPUESTA 
-        // al movimiento del ratón (se queda atrás)
-        float swayX = -lookInput.x * swayAmount;
-        float swayY = -lookInput.y * swayAmount;
+        // Desplazar en dirección OPUESTA al ratón (se queda atrás)
+        float targetX = -lookInput.x * swayAmount;
+        float targetY = -lookInput.y * swayAmount;
 
-        swayX = Mathf.Clamp(swayX, -maxSway, maxSway);
-        swayY = Mathf.Clamp(swayY, -maxSway, maxSway);
+        // Clamp para que no se salga de pantalla
+        targetX = Mathf.Clamp(targetX, -maxSway, maxSway);
+        targetY = Mathf.Clamp(targetY, -maxSway, maxSway);
 
-        Vector3 targetSway = new Vector3(swayX, swayY, 0);
+        Vector3 targetSway = new Vector3(targetX, targetY, 0f);
 
-        // Suavizar hacia el target
+        // Movimiento lento hacia el target (inercia pesada)
         currentSway = Vector3.Lerp(
             currentSway,
             targetSway,
             Time.deltaTime * smoothSpeed
         );
 
-        // Cuando no hay input, volver al centro
-        if (lookInput.magnitude < 0.01f)
+        // Cuando no hay input, volver al centro MUY lentamente
+        if (lookInput.sqrMagnitude < 0.01f)
         {
             currentSway = Vector3.Lerp(
                 currentSway,
@@ -55,7 +55,7 @@ public class GunSway : MonoBehaviour
             );
         }
 
-        // Aplicar sobre posición original
+        // Aplicar
         transform.localPosition = originPos + currentSway;
     }
 }

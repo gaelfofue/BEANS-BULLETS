@@ -39,6 +39,8 @@ public class EnemyHealth : MonoBehaviour
         if (GameTimer.Instance != null)
             GameTimer.Instance.AddKillTime();
 
+        FindObjectOfType<GameOverManager>()?.RegisterKill();
+
         if (myRoom != null)
             myRoom.OnEnemyDied(this);
 

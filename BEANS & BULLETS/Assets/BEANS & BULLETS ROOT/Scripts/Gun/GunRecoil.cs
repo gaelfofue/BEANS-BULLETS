@@ -52,11 +52,11 @@ public class GunRecoil : MonoBehaviour
             }
         }
 
-        Quaternion kickRot = Quaternion.AngleAxis(-currentRecoil, Vector3.up);
+        Quaternion kickRot = Quaternion.AngleAxis(-currentRecoil, Vector3.right);
 
         if (isSpinning)
         {
-            Quaternion spinRot = Quaternion.AngleAxis(spinProgress, Vector3.down);
+            Quaternion spinRot = Quaternion.AngleAxis(spinProgress, Vector3.left);
             transform.localRotation = originRot * kickRot * spinRot;
         }
         else

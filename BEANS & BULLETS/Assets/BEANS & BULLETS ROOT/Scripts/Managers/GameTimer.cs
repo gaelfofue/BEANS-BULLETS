@@ -52,6 +52,7 @@ public class GameTimer : MonoBehaviour
             currentTime = 0;
             isDead = true;
             onTimerEnd?.Invoke();
+            FindObjectOfType<GameOverManager>()?.TriggerGameOver();
         }
     }
 
