@@ -634,14 +634,6 @@ PrefabInstance:
       propertyPath: m_LocalPosition.y
       value: -0.297
       objectReference: {fileID: 0}
-    - target: {fileID: 2177541658818168477, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
-      propertyPath: maxSway
-      value: 0.8
-      objectReference: {fileID: 0}
-    - target: {fileID: 2177541658818168477, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
-      propertyPath: swayAmount
-      value: 0.05
-      objectReference: {fileID: 0}
     - target: {fileID: 6248809168652289912, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
