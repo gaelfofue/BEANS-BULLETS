@@ -20,11 +20,8 @@ public class GameOverManager : MonoBehaviour
     [SerializeField] private float slowMoScale = 0.2f;
     [SerializeField] private float fadeDuration = 0.8f;
 
-    // Stats
     private int totalKills = 0;
     private float totalTimeSurvived = 0f;
-
-    // State
     private bool gameOverTriggered = false;
     private bool waitingForInput = false;
 
@@ -38,9 +35,7 @@ public class GameOverManager : MonoBehaviour
     private void Update()
     {
         if (!gameOverTriggered)
-        {
             totalTimeSurvived += Time.deltaTime;
-        }
 
         if (waitingForInput)
         {
@@ -51,7 +46,7 @@ public class GameOverManager : MonoBehaviour
 #if UNITY_EDITOR
                     UnityEditor.EditorApplication.isPlaying = false;
 #else
-            Application.Quit();
+                    Application.Quit();
 #endif
                 }
                 else
@@ -98,7 +93,6 @@ public class GameOverManager : MonoBehaviour
         fadeOverlay.alpha = 1f;
 
         Time.timeScale = 0f;
-
         ShowStats();
     }
 
