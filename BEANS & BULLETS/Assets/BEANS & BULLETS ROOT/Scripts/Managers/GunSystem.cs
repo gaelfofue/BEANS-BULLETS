@@ -3,343 +3,333 @@ using UnityEngine.InputSystem;
 
 public class GunSystem : MonoBehaviour
 {
-    [Header("References")]
-    public Transform cam;
-    public Transform attackPoint;
-
     [Header("Base Stats")]
-    public float damage = 25f;
-    public float range = 100f;
-    public float fireRate = 0.5f;
-    public float spread = 0f;
-    public int bulletsPerShot = 1;
+    [SerializeField] private GunStats stats;
 
-    [Header("Fire Mode")]
-    public FireMode fireMode = FireMode.SemiAuto;
+    [Header("Current Loadout")]
+    [SerializeField] private FireMode fireMode;
+    [SerializeField] private BulletType bulletType;
 
-    [Header("Magazine (ignored in Charge mode)")]
-    public int magazineSize = 6;
-    public float reloadTime = 1f;
-    private int bulletsLeft;
-    private bool reloading = false;
+    [Header("Layers")]
+    [SerializeField] private LayerMask hitMask;
 
-    [Header("Charge Settings (only Charge mode)")]
-    public float chargeTime = 1.5f;
-    public float chargeMultiplier = 4f;
-    public float minChargeToFire = 0.2f;
-    private float currentCharge = 0f;
-    private bool isCharging = false;
+    [Header("References")]
+    [SerializeField] private GunRecoil gunRecoil;
+    [SerializeField] private ParticleSystem muzzleFlash;
 
-    [Header("Graphics")]
-    public GameObject muzzleFlash;
-    public GameObject hitEffect;
-    public GameObject enemyHitEffect;
+    [Header("Audio")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip fireSound;
+    [SerializeField] private AudioClip reloadSound;
+    [SerializeField] private AudioClip emptySound;
 
-    [Header("Feel")]
-    public GunRecoil gunRecoil;
-
-    [Header("UI")]
-    public CrosshairUI crosshairUI;
+    // Estado
+    private int currentAmmo;
+    private float timeSinceLastShot;
+    private bool isReloading;
+    private float reloadTimer;
 
     // Input
-    private bool holdingShoot;
-    private bool readyToShoot = true;
+    private bool inputDown;
+    private bool inputHeld;
+    private bool inputConsumed = true;
 
-    public enum FireMode
+    // Burst
+    private int burstRemaining = 0;
+    private float burstTimer = 0f;
+
+    // Cache
+    private Camera cam;
+    private HUDController hud;
+    private CrosshairUI crosshair;
+
+    private void Start()
     {
-        SemiAuto,
-        Auto,
-        Charge
+        currentAmmo = stats.magSize;
+        cam = Camera.main;
+        hud = FindObjectOfType<HUDController>();
+        crosshair = FindObjectOfType<CrosshairUI>();
+        UpdateHUD();
     }
 
-    void Awake()
+    private void Update()
     {
-        bulletsLeft = magazineSize;
-    }
+        timeSinceLastShot += Time.deltaTime;
 
-    void Update()
-    {
-        if (reloading) return;
-
-        if (fireMode == FireMode.Auto && holdingShoot && readyToShoot)
+        // Recarga
+        if (isReloading)
         {
-            if (bulletsLeft > 0)
-                Shoot(damage);
-            else
-                TryReload();
+            reloadTimer -= Time.deltaTime;
+            if (reloadTimer <= 0f)
+                FinishReload();
+            return;
         }
 
-        if (isCharging)
+        // Burst pendiente
+        if (burstRemaining > 0)
         {
-            currentCharge += Time.deltaTime / chargeTime;
-            currentCharge = Mathf.Clamp01(currentCharge);
+            burstTimer -= Time.deltaTime;
+            if (burstTimer <= 0f)
+            {
+                DoSingleShot();
+                burstRemaining--;
+                if (burstRemaining > 0)
+                {
+                    FM_Burst burst = fireMode as FM_Burst;
+                    burstTimer = burst != null ? burst.burstDelay : 0.08f;
+                }
+            }
+            return;
+        }
+
+        // Comprobar si puede disparar
+        if (fireMode == null) return;
+
+        bool canFire = fireMode.CanFire(
+            inputDown && !inputConsumed,
+            inputHeld,
+            timeSinceLastShot,
+            stats.fireRate
+        );
+
+        if (canFire)
+        {
+            inputConsumed = true;
+            TryShoot();
         }
     }
 
     #region INPUT
 
-    public void OnShoot(InputAction.CallbackContext context)
+    public void OnFire(InputAction.CallbackContext context)
     {
         if (context.performed)
         {
-            holdingShoot = true;
-            OnShootPressed();
+            inputDown = true;
+            inputHeld = true;
+            inputConsumed = false;
         }
+
         if (context.canceled)
         {
-            holdingShoot = false;
-            OnShootReleased();
+            inputDown = false;
+            inputHeld = false;
         }
     }
 
     public void OnReload(InputAction.CallbackContext context)
     {
         if (context.performed)
-        {
             TryReload();
-        }
     }
 
     #endregion
 
-    #region SHOOT LOGIC
+    #region SHOOT
 
-    private void OnShootPressed()
+    private void TryShoot()
     {
-        if (reloading) return;
+        if (isReloading) return;
 
-        switch (fireMode)
+        if (currentAmmo <= 0)
         {
-            case FireMode.SemiAuto:
-                if (readyToShoot && bulletsLeft > 0)
-                    Shoot(damage);
-                else if (bulletsLeft <= 0)
-                    TryReload();
-                break;
-
-            case FireMode.Charge:
-                if (readyToShoot)
-                    StartCharge();
-                break;
-        }
-    }
-
-    private void OnShootReleased()
-    {
-        if (fireMode == FireMode.Charge && isCharging)
-        {
-            ReleaseCharge();
-        }
-    }
-
-    #endregion
-
-    #region DISPARO
-
-    private void Shoot(float finalDamage)
-    {
-        readyToShoot = false;
-
-        for (int i = 0; i < bulletsPerShot; i++)
-        {
-            ShootRay(finalDamage);
-        }
-
-        if (muzzleFlash != null)
-        {
-            GameObject flash = Instantiate(
-                muzzleFlash,
-                attackPoint.position,
-                attackPoint.rotation
-            );
-            Destroy(flash, 0.1f);
-        }
-
-        // Recoil
-        if (gunRecoil != null)
-            gunRecoil.DoRecoil();
-
-        // Crosshair feedback
-        if (crosshairUI != null)
-            crosshairUI.OnShoot();
-
-        if (fireMode != FireMode.Charge)
-        {
-            bulletsLeft--;
-        }
-
-        Invoke(nameof(ResetShot), fireRate);
-    }
-
-    #endregion
-
-    #region CHARGE
-
-    private void StartCharge()
-    {
-        isCharging = true;
-        currentCharge = 0f;
-    }
-
-    private void ReleaseCharge()
-    {
-        isCharging = false;
-
-        if (currentCharge < minChargeToFire)
-        {
-            currentCharge = 0f;
+            PlaySound(emptySound);
+            TryReload();
             return;
         }
 
-        float chargeDamage = damage * (1 + (currentCharge * (chargeMultiplier - 1)));
-        Shoot(chargeDamage);
-        currentCharge = 0f;
+        int rayCount = fireMode.GetRayCount();
+        float spread = fireMode.GetSpreadAngle();
+
+        if (rayCount > 1 && spread > 0f)
+        {
+            // SHOTGUN: múltiples rayos simultáneos, un solo disparo
+            DoShotgunBlast(rayCount, spread);
+        }
+        else if (rayCount > 1 && fireMode is FM_Burst)
+        {
+            // BURST: múltiples disparos secuenciales
+            DoSingleShot();
+            burstRemaining = rayCount - 1;
+            FM_Burst burst = fireMode as FM_Burst;
+            burstTimer = burst.burstDelay;
+        }
+        else
+        {
+            // SEMI AUTO: un disparo
+            DoSingleShot();
+        }
+    }
+
+    private void DoShotgunBlast(int pellets, float spread)
+    {
+        currentAmmo--;
+        timeSinceLastShot = 0f;
+
+        if (muzzleFlash != null)
+            muzzleFlash.Play();
+
+        PlaySound(fireSound);
+
+        if (gunRecoil != null)
+            gunRecoil.DoRecoil();
+
+        bool hitAnyEnemy = false;
+
+        for (int i = 0; i < pellets; i++)
+        {
+            Vector3 direction = cam.transform.forward;
+            direction += cam.transform.right * Random.Range(-spread, spread);
+            direction += cam.transform.up * Random.Range(-spread, spread);
+            direction.Normalize();
+
+            Ray ray = new Ray(cam.transform.position, direction);
+            RaycastHit hit;
+
+            if (Physics.Raycast(ray, out hit, stats.range, hitMask))
+            {
+                if (bulletType != null)
+                {
+                    float finalDamage = stats.damage * bulletType.GetDamageMultiplier();
+                    // Cada pellet hace menos daño
+                    finalDamage /= pellets * 0.5f;
+                    bulletType.OnHit(hit, finalDamage, direction);
+                }
+
+                EnemyHealth enemy = hit.collider.GetComponentInParent<EnemyHealth>();
+                if (enemy != null)
+                    hitAnyEnemy = true;
+            }
+        }
+
+        if (hitAnyEnemy && crosshair != null)
+            crosshair.OnHit();
+
+        UpdateHUD();
+
+        if (currentAmmo <= 0)
+            TryReload();
+    }
+
+    private void DoSingleShot()
+    {
+        if (currentAmmo <= 0) return;
+
+        currentAmmo--;
+        timeSinceLastShot = 0f;
+
+        // Efectos
+        if (muzzleFlash != null)
+            muzzleFlash.Play();
+
+        PlaySound(fireSound);
+
+        if (gunRecoil != null)
+            gunRecoil.DoRecoil();
+
+        // Raycast
+        Vector3 direction = cam.transform.forward;
+
+        // Spread si el fire mode lo tiene
+        float spread = fireMode.GetSpreadAngle();
+        if (spread > 0f)
+        {
+            direction += cam.transform.right * Random.Range(-spread, spread);
+            direction += cam.transform.up * Random.Range(-spread, spread);
+            direction.Normalize();
+        }
+
+        Ray ray = new Ray(cam.transform.position, direction);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, stats.range, hitMask))
+        {
+            // Delegar al BulletType
+            if (bulletType != null)
+            {
+                float finalDamage = stats.damage * bulletType.GetDamageMultiplier();
+                bulletType.OnHit(hit, finalDamage, direction);
+            }
+
+            // Hitmarker si pegó enemigo
+            EnemyHealth enemy = hit.collider.GetComponentInParent<EnemyHealth>();
+            if (enemy != null && crosshair != null)
+                crosshair.OnHit();
+        }
+
+        UpdateHUD();
+
+        // Auto-reload
+        if (currentAmmo <= 0)
+            TryReload();
     }
 
     #endregion
 
-    #region RECARGA
+    #region RELOAD
 
     private void TryReload()
     {
-        if (fireMode == FireMode.Charge) return;
-        if (reloading) return;
-        if (bulletsLeft >= magazineSize) return;
+        if (isReloading) return;
+        if (currentAmmo >= stats.magSize) return;
 
-        reloading = true;
-        isCharging = false;
-        currentCharge = 0f;
+        isReloading = true;
+        reloadTimer = stats.reloadTime;
 
-        // Spin
+        PlaySound(reloadSound);
+
         if (gunRecoil != null)
-            gunRecoil.DoReloadSpin(reloadTime);
-
-        Invoke(nameof(ReloadFinished), reloadTime);
+            gunRecoil.DoReloadSpin(stats.reloadTime);
     }
 
-    private void ReloadFinished()
+    private void FinishReload()
     {
-        bulletsLeft = magazineSize;
-        reloading = false;
+        isReloading = false;
+        currentAmmo = stats.magSize;
+        UpdateHUD();
     }
 
     #endregion
 
-    #region RAYCAST
+    #region LOADOUT
 
-    private void ShootRay(float finalDamage)
+    public void SetFireMode(FireMode newMode)
     {
-        Vector3 direction = cam.forward;
-        if (spread > 0)
-        {
-            float x = Random.Range(-spread, spread);
-            float y = Random.Range(-spread, spread);
-            direction += new Vector3(x, y, 0);
-        }
+        fireMode = newMode;
+        burstRemaining = 0;
 
-        Ray ray = new Ray(cam.position, direction);
-        RaycastHit hit;
-
-        if (Physics.Raycast(ray, out hit, range))
-        {
-            EnemyHealth enemy = hit.collider.GetComponent<EnemyHealth>();
-
-            if (enemy != null)
-            {
-                enemy.TakeDamage(finalDamage);
-
-                // Hitmarker
-                if (crosshairUI != null)
-                    crosshairUI.OnHit();
-
-                // Tiempo por hit
-                if (GameTimer.Instance != null)
-                    GameTimer.Instance.AddHitTime();
-
-                if (enemyHitEffect != null)
-                {
-                    GameObject effect = Instantiate(
-                        enemyHitEffect,
-                        hit.point,
-                        Quaternion.LookRotation(hit.normal)
-                    );
-                    Destroy(effect, 1f);
-                }
-            }
-            else
-            {
-                if (hitEffect != null)
-                {
-                    GameObject effect = Instantiate(
-                        hitEffect,
-                        hit.point,
-                        Quaternion.LookRotation(hit.normal)
-                    );
-                    Destroy(effect, 2f);
-                }
-            }
-        }
+        // Actualizar HUD
+        hud = FindObjectOfType<HUDController>();
+        if (hud != null && newMode != null)
+            hud.SetUpgrade(0, newMode.icon);
     }
 
-    private void ResetShot()
+    public void SetBulletType(BulletType newType)
     {
-        readyToShoot = true;
+        bulletType = newType;
+
+        hud = FindObjectOfType<HUDController>();
+        if (hud != null && newType != null)
+            hud.SetUpgrade(1, newType.icon);
     }
 
-    #endregion
-
-    #region GETTERS PARA HUD
-
-    public int GetBulletsLeft() { return bulletsLeft; }
-    public int GetMagazineSize() { return magazineSize; }
-    public bool IsReloading() { return reloading; }
-    public float GetChargePercent() { return currentCharge; }
-    public bool IsCharging() { return isCharging; }
     public FireMode GetFireMode() { return fireMode; }
+    public BulletType GetBulletType() { return bulletType; }
 
     #endregion
 
-    #region MUTACIONES
+    #region HELPERS
 
-    public void MutateToShotgun()
+    private void UpdateHUD()
     {
-        fireMode = FireMode.SemiAuto;
-        damage = 15f;
-        spread = 0.1f;
-        bulletsPerShot = 5;
-        fireRate = 0.8f;
-        magazineSize = 2;
-        reloadTime = 1.5f;
-        ForceReload();
+        if (hud != null)
+            hud.UpdateAmmo(currentAmmo, stats.magSize);
     }
 
-    public void MutateToSniper()
+    private void PlaySound(AudioClip clip)
     {
-        fireMode = FireMode.Charge;
-        damage = 30f;
-        spread = 0f;
-        bulletsPerShot = 1;
-        fireRate = 0.3f;
-        chargeTime = 1.5f;
-        chargeMultiplier = 4f;
-    }
-
-    public void ResetToRevolver()
-    {
-        fireMode = FireMode.SemiAuto;
-        damage = 25f;
-        spread = 0f;
-        bulletsPerShot = 1;
-        fireRate = 0.5f;
-        magazineSize = 6;
-        reloadTime = 1f;
-        ForceReload();
-    }
-
-    private void ForceReload()
-    {
-        bulletsLeft = magazineSize;
-        reloading = false;
+        if (audioSource != null && clip != null)
+            audioSource.PlayOneShot(clip);
     }
 
     #endregion
