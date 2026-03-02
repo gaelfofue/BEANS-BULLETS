@@ -39,7 +39,6 @@ public class EnemyHealth : MonoBehaviour
         if (GameTimer.Instance != null)
             GameTimer.Instance.AddKillTime();
 
-        FindObjectOfType<GameOverManager>()?.RegisterKill();
         FindObjectOfType<HUDController>()?.RegisterKill();
 
         if (myRoom != null)

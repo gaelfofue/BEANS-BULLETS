@@ -6,37 +6,28 @@ using TMPro;
 public class GameOverManager : MonoBehaviour
 {
     [Header("Scene")]
-    [SerializeField] private string mainSceneName = "MainScene";
+    [SerializeField] private string mainSceneName;
 
-    [Header("UI References")]
-    [SerializeField] private CanvasGroup fadeOverlay;
-    [SerializeField] private GameObject statsPanel;
-    [SerializeField] private TextMeshProUGUI killsText;
-    [SerializeField] private TextMeshProUGUI timeText;
-    [SerializeField] private TextMeshProUGUI roomsText;
+    [Header("BSOD")]
+    [SerializeField] private CanvasGroup bsodOverlay;
+    [SerializeField] private TextMeshProUGUI bsodText;
 
     [Header("Timing")]
     [SerializeField] private float slowMoDuration = 1.5f;
     [SerializeField] private float slowMoScale = 0.2f;
-    [SerializeField] private float fadeDuration = 0.8f;
+    [SerializeField] private float fadeDuration = 0.5f;
 
-    private int totalKills = 0;
-    private float totalTimeSurvived = 0f;
     private bool gameOverTriggered = false;
     private bool waitingForInput = false;
 
     private void Start()
     {
-        fadeOverlay.alpha = 0f;
-        fadeOverlay.gameObject.SetActive(false);
-        statsPanel.SetActive(false);
+        bsodOverlay.alpha = 0f;
+        bsodOverlay.gameObject.SetActive(false);
     }
 
     private void Update()
     {
-        if (!gameOverTriggered)
-            totalTimeSurvived += Time.deltaTime;
-
         if (waitingForInput)
         {
             if (Input.anyKeyDown)
@@ -57,15 +48,14 @@ public class GameOverManager : MonoBehaviour
         }
     }
 
-    public void RegisterKill()
-    {
-        totalKills++;
-    }
-
     public void TriggerGameOver()
     {
         if (gameOverTriggered) return;
         gameOverTriggered = true;
+
+        HUDController hud = FindObjectOfType<HUDController>();
+        if (hud != null) hud.PauseRunTimer();
+
         StartCoroutine(GameOverSequence());
     }
 
@@ -74,6 +64,7 @@ public class GameOverManager : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
+        // SlowMo
         Time.timeScale = slowMoScale;
         float elapsed = 0f;
         while (elapsed < slowMoDuration)
@@ -82,36 +73,51 @@ public class GameOverManager : MonoBehaviour
             yield return null;
         }
 
-        fadeOverlay.gameObject.SetActive(true);
-        elapsed = 0f;
-        while (elapsed < fadeDuration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            fadeOverlay.alpha = Mathf.Clamp01(elapsed / fadeDuration);
-            yield return null;
-        }
-        fadeOverlay.alpha = 1f;
+        // Preparar BSOD text antes de mostrar
+        BuildBSODText();
 
+        // Aparecer de golpe (como BSOD real)
+        bsodOverlay.gameObject.SetActive(true);
+        bsodOverlay.alpha = 1f;
+
+        // Congelar
         Time.timeScale = 0f;
-        ShowStats();
-    }
-
-    private void ShowStats()
-    {
-        statsPanel.SetActive(true);
-
-        killsText.text = "KILLS: " + totalKills;
-
-        int minutes = Mathf.FloorToInt(totalTimeSurvived / 60f);
-        int seconds = Mathf.FloorToInt(totalTimeSurvived % 60f);
-        timeText.text = "TIME: " + minutes.ToString("00") + ":" + seconds.ToString("00");
-
-        int rooms = LevelManager.Instance != null
-            ? LevelManager.Instance.GetRoomsCompleted()
-            : 0;
-        roomsText.text = "ROOMS: " + rooms;
 
         waitingForInput = true;
+    }
+
+    private void BuildBSODText()
+    {
+        HUDController hud = FindObjectOfType<HUDController>();
+
+        int kills = hud != null ? hud.GetKillCount() : 0;
+        float runTime = hud != null ? hud.GetRunTime() : 0f;
+        int rooms = LevelManager.Instance != null
+            ? LevelManager.Instance.GetRoomsCompleted() : 0;
+
+        int minutes = Mathf.FloorToInt(runTime / 60f);
+        int seconds = Mathf.FloorToInt(runTime % 60f);
+
+        bsodText.text =
+            "   Bean & Bullets OS v1.0\n" +
+            "\n" +
+            "   A fatal exception 0x0000DEAD has occurred at\n" +
+            "   TIMER:NULL in BEAN.EXE\n" +
+            "\n" +
+            "   The current bean has been terminated.\n" +
+            "\n" +
+            "   * * * S T A T S * * *\n" +
+            "\n" +
+            "   KILLS .............. " + kills.ToString("D6") + "\n" +
+            "   TIME ............... " + minutes.ToString("00") + ":" + seconds.ToString("00") + "\n" +
+            "   ROOMS .............. " + rooms.ToString("D4") + "\n" +
+            "\n" +
+            "   * * * * * * * * * * *\n" +
+            "\n" +
+            "   Press any key to reboot.\n" +
+            "   Press ESC to shut down.\n" +
+            "\n" +
+            "   Press any key to continue _";
     }
 
     private void RestartGame()

@@ -4,17 +4,18 @@ using TMPro;
 
 public class HUDController : MonoBehaviour
 {
-    [Header("Timer Display")]
-    [SerializeField] private TextMeshProUGUI timerDigitsText;
+    [Header("Run Timer")]
+    [SerializeField] private TextMeshProUGUI runTimerText;
 
-    [Header("Timer Bar")]
-    [SerializeField] private RectTransform timerBarFill;
-    [SerializeField] private Image timerBarImage;
+    [Header("Combat Timer Bar")]
+    [SerializeField] private GameObject combatTimerPanel;
+    [SerializeField] private RectTransform combatTimerFill;
+    [SerializeField] private Image combatTimerImage;
 
     [Header("Score")]
     [SerializeField] private TextMeshProUGUI scoreText;
 
-    [Header("Room Progress")]
+    [Header("Progress")]
     [SerializeField] private TextMeshProUGUI roomProgressText;
     [SerializeField] private TextMeshProUGUI roundText;
 
@@ -25,11 +26,8 @@ public class HUDController : MonoBehaviour
     [SerializeField] private Image slotIcon1;
     [SerializeField] private Image slotIcon2;
     [SerializeField] private Image slotIcon3;
-    [SerializeField] private TextMeshProUGUI slotLabel1;
-    [SerializeField] private TextMeshProUGUI slotLabel2;
-    [SerializeField] private TextMeshProUGUI slotLabel3;
 
-    [Header("Timer Colors")]
+    [Header("Combat Timer Colors")]
     [SerializeField] private Color colorSafe = new Color(0f, 1f, 0.255f);
     [SerializeField] private Color colorWarning = new Color(1f, 0.843f, 0f);
     [SerializeField] private Color colorDanger = new Color(1f, 0f, 0.251f);
@@ -38,49 +36,78 @@ public class HUDController : MonoBehaviour
     [SerializeField] private float blinkSpeed = 4f;
     [SerializeField] private int roomsPerCycle = 3;
 
+    // Interno
     private int killCount = 0;
+    private float runTimer = 0f;
+    private bool runTimerPaused = false;
 
     private void Update()
     {
-        UpdateTimerDisplay();
-        UpdateTimerBar();
+        UpdateRunTimer();
+        UpdateCombatTimer();
         UpdateRoomProgress();
     }
 
-    private void UpdateTimerDisplay()
+    // ==================
+    // RUN TIMER (tiempo total de partida)
+    // ==================
+
+    private void UpdateRunTimer()
     {
-        if (GameTimer.Instance == null) return;
+        if (runTimerPaused) return;
 
-        float current = GameTimer.Instance.GetCurrentTime();
-        float ratio = GameTimer.Instance.GetTimePercent();
+        runTimer += Time.deltaTime;
 
-        int totalSeconds = Mathf.FloorToInt(current);
+        int totalSeconds = Mathf.FloorToInt(runTimer);
         int minutes = totalSeconds / 60;
         int seconds = totalSeconds % 60;
-        int ms = Mathf.FloorToInt((current - totalSeconds) * 100f);
+        int ms = Mathf.FloorToInt((runTimer - totalSeconds) * 100f);
 
-        timerDigitsText.text = string.Format("{0:00}:{1:00}:{2:00}", minutes, seconds, ms);
-        timerDigitsText.color = GetTimerColor(ratio);
+        runTimerText.text = string.Format("{0:00}:{1:00}:{2:00}", minutes, seconds, ms);
     }
 
-    private void UpdateTimerBar()
+    public void PauseRunTimer()
+    {
+        runTimerPaused = true;
+    }
+
+    public float GetRunTime()
+    {
+        return runTimer;
+    }
+
+    // ==================
+    // COMBAT TIMER (barra inferior, solo en combate)
+    // ==================
+
+    private void UpdateCombatTimer()
     {
         if (GameTimer.Instance == null) return;
 
+        bool inCombat = GameTimer.Instance.IsRunning() && !GameTimer.Instance.IsDead();
+
+        // Mostrar/ocultar panel
+        if (combatTimerPanel != null)
+            combatTimerPanel.SetActive(inCombat);
+
+        if (!inCombat) return;
+
         float ratio = GameTimer.Instance.GetTimePercent();
 
-        if (timerBarFill != null)
+        // Escalar barra
+        if (combatTimerFill != null)
         {
-            Vector3 scale = timerBarFill.localScale;
+            Vector3 scale = combatTimerFill.localScale;
             scale.x = Mathf.Clamp01(ratio);
-            timerBarFill.localScale = scale;
+            combatTimerFill.localScale = scale;
         }
 
-        if (timerBarImage != null)
-            timerBarImage.color = GetTimerColor(ratio);
+        // Color
+        if (combatTimerImage != null)
+            combatTimerImage.color = GetCombatColor(ratio);
     }
 
-    private Color GetTimerColor(float ratio)
+    private Color GetCombatColor(float ratio)
     {
         if (ratio > 0.6f)
             return colorSafe;
@@ -92,6 +119,26 @@ public class HUDController : MonoBehaviour
             return Color.Lerp(colorDanger, Color.white, blink * 0.3f);
         }
     }
+
+    // ==================
+    // SCORE
+    // ==================
+
+    public void RegisterKill()
+    {
+        killCount++;
+        if (scoreText != null)
+            scoreText.text = killCount.ToString("D8");
+    }
+
+    public int GetKillCount()
+    {
+        return killCount;
+    }
+
+    // ==================
+    // ROOM PROGRESS
+    // ==================
 
     private void UpdateRoomProgress()
     {
@@ -107,12 +154,9 @@ public class HUDController : MonoBehaviour
             roundText.text = "ROUND " + round;
     }
 
-    public void RegisterKill()
-    {
-        killCount++;
-        if (scoreText != null)
-            scoreText.text = killCount.ToString("D8");
-    }
+    // ==================
+    // AMMO
+    // ==================
 
     public void UpdateAmmo(int current, int max)
     {
@@ -120,22 +164,24 @@ public class HUDController : MonoBehaviour
             ammoText.text = current + " / " + max;
     }
 
-    public void SetUpgrade(int slot, Sprite icon, string label)
+    // ==================
+    // UPGRADES
+    // ==================
+
+    public void SetUpgrade(int slot, Sprite icon)
     {
+        Image target = null;
         switch (slot)
         {
-            case 0:
-                if (slotIcon1 != null) { slotIcon1.sprite = icon; slotIcon1.color = Color.white; }
-                if (slotLabel1 != null) slotLabel1.text = label;
-                break;
-            case 1:
-                if (slotIcon2 != null) { slotIcon2.sprite = icon; slotIcon2.color = Color.white; }
-                if (slotLabel2 != null) slotLabel2.text = label;
-                break;
-            case 2:
-                if (slotIcon3 != null) { slotIcon3.sprite = icon; slotIcon3.color = Color.white; }
-                if (slotLabel3 != null) slotLabel3.text = label;
-                break;
+            case 0: target = slotIcon1; break;
+            case 1: target = slotIcon2; break;
+            case 2: target = slotIcon3; break;
+        }
+
+        if (target != null)
+        {
+            target.sprite = icon;
+            target.color = Color.white;
         }
     }
 
@@ -145,8 +191,5 @@ public class HUDController : MonoBehaviour
         if (slotIcon1 != null) { slotIcon1.sprite = null; slotIcon1.color = empty; }
         if (slotIcon2 != null) { slotIcon2.sprite = null; slotIcon2.color = empty; }
         if (slotIcon3 != null) { slotIcon3.sprite = null; slotIcon3.color = empty; }
-        if (slotLabel1 != null) slotLabel1.text = "FIRE MODE";
-        if (slotLabel2 != null) slotLabel2.text = "BULLET TYPE";
-        if (slotLabel3 != null) slotLabel3.text = "MODIFIER";
     }
 }
