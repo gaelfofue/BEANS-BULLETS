@@ -5194,6 +5194,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1112248776346918941, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
+      propertyPath: hitMask.m_Bits
+      value: 129
+      objectReference: {fileID: 0}
     - target: {fileID: 3056655992534524341, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: tiltAmount
       value: 8
@@ -5241,6 +5245,10 @@ PrefabInstance:
     - target: {fileID: 6891964512526630200, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
       propertyPath: m_Name
       value: PlayerContainer
+      objectReference: {fileID: 0}
+    - target: {fileID: 8056066494849973197, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
+      propertyPath: m_CullingMask.m_Bits
+      value: 439
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

@@ -323,7 +323,6 @@ MonoBehaviour:
   doorPanel: {fileID: 341595028}
   openHeight: 4
   moveSpeed: 3
-  stayOpenTime: 3
   doorRenderer: {fileID: 341595025}
   emissionIntensity: 2
   openSound: {fileID: 0}
@@ -1973,7 +1972,6 @@ MonoBehaviour:
   doorPanel: {fileID: 515790480}
   openHeight: 4
   moveSpeed: 3
-  stayOpenTime: 3
   doorRenderer: {fileID: 515790477}
   emissionIntensity: 2
   openSound: {fileID: 0}
