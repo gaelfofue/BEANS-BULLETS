@@ -56,6 +56,12 @@ public class GunSystem : MonoBehaviour
     {
         timeSinceLastShot += Time.deltaTime;
 
+        // DEBUG
+        if (inputDown && !inputConsumed)
+        {
+            Debug.Log($"FIRE INPUT | isReloading:{isReloading} ammo:{currentAmmo} timeSince:{timeSinceLastShot:F2} fireMode:{fireMode != null} bulletType:{bulletType != null} stats:{stats != null}");
+        }
+
         // Recarga
         if (isReloading)
         {
@@ -143,12 +149,10 @@ public class GunSystem : MonoBehaviour
 
         if (rayCount > 1 && spread > 0f)
         {
-            // SHOTGUN: múltiples rayos simultáneos, un solo disparo
             DoShotgunBlast(rayCount, spread);
         }
         else if (rayCount > 1 && fireMode is FM_Burst)
         {
-            // BURST: múltiples disparos secuenciales
             DoSingleShot();
             burstRemaining = rayCount - 1;
             FM_Burst burst = fireMode as FM_Burst;
@@ -156,7 +160,6 @@ public class GunSystem : MonoBehaviour
         }
         else
         {
-            // SEMI AUTO: un disparo
             DoSingleShot();
         }
     }
@@ -170,6 +173,9 @@ public class GunSystem : MonoBehaviour
             muzzleFlash.Play();
 
         PlaySound(fireSound);
+
+        if (crosshair != null)
+            crosshair.OnShoot();
 
         if (gunRecoil != null)
             gunRecoil.DoRecoil();
@@ -188,10 +194,13 @@ public class GunSystem : MonoBehaviour
 
             if (Physics.Raycast(ray, out hit, stats.range, hitMask))
             {
+                // DEBUG — rayo rojo si pega
+                Debug.DrawLine(cam.transform.position, hit.point, Color.red, 1f);
+                Debug.Log($"SHOTGUN HIT: {hit.collider.gameObject.name} Layer:{hit.collider.gameObject.layer}");
+
                 if (bulletType != null)
                 {
                     float finalDamage = stats.damage * bulletType.GetDamageMultiplier();
-                    // Cada pellet hace menos daño
                     finalDamage /= pellets * 0.5f;
                     bulletType.OnHit(hit, finalDamage, direction);
                 }
@@ -199,6 +208,11 @@ public class GunSystem : MonoBehaviour
                 EnemyHealth enemy = hit.collider.GetComponentInParent<EnemyHealth>();
                 if (enemy != null)
                     hitAnyEnemy = true;
+            }
+            else
+            {
+                // DEBUG — rayo amarillo si no pega
+                Debug.DrawRay(cam.transform.position, direction * stats.range, Color.yellow, 1f);
             }
         }
 
@@ -224,13 +238,15 @@ public class GunSystem : MonoBehaviour
 
         PlaySound(fireSound);
 
+        if (crosshair != null)
+            crosshair.OnShoot();
+
         if (gunRecoil != null)
             gunRecoil.DoRecoil();
 
         // Raycast
         Vector3 direction = cam.transform.forward;
 
-        // Spread si el fire mode lo tiene
         float spread = fireMode.GetSpreadAngle();
         if (spread > 0f)
         {
@@ -244,22 +260,29 @@ public class GunSystem : MonoBehaviour
 
         if (Physics.Raycast(ray, out hit, stats.range, hitMask))
         {
-            // Delegar al BulletType
+            // DEBUG — rayo rojo si pega
+            Debug.DrawLine(cam.transform.position, hit.point, Color.red, 1f);
+            Debug.Log($"HIT: {hit.collider.gameObject.name} Layer:{hit.collider.gameObject.layer}");
+
             if (bulletType != null)
             {
                 float finalDamage = stats.damage * bulletType.GetDamageMultiplier();
                 bulletType.OnHit(hit, finalDamage, direction);
             }
 
-            // Hitmarker si pegó enemigo
             EnemyHealth enemy = hit.collider.GetComponentInParent<EnemyHealth>();
             if (enemy != null && crosshair != null)
                 crosshair.OnHit();
         }
+        else
+        {
+            // DEBUG — rayo amarillo si no pega
+            Debug.DrawRay(cam.transform.position, direction * stats.range, Color.yellow, 1f);
+            Debug.Log("MISS — no hit");
+        }
 
         UpdateHUD();
 
-        // Auto-reload
         if (currentAmmo <= 0)
             TryReload();
     }
@@ -298,7 +321,6 @@ public class GunSystem : MonoBehaviour
         fireMode = newMode;
         burstRemaining = 0;
 
-        // Actualizar HUD
         hud = FindObjectOfType<HUDController>();
         if (hud != null && newMode != null)
             hud.SetUpgrade(0, newMode.icon);
