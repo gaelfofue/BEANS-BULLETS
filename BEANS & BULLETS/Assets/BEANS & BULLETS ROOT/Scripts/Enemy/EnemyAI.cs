@@ -16,26 +16,21 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private float lungeRange = 3.5f;
 
     [Header("Movement")]
-    [SerializeField] private float chaseSpeed = 7f;
+    [SerializeField] private float chaseSpeed = 5f;
     [SerializeField] private float rotationSpeed = 720f;
 
     [Header("Lunge")]
-    [SerializeField] private float windupDuration = 0.25f;
-    [SerializeField] private float lungeDuration = 0.18f;
-    [SerializeField] private float lungeForce = 15f;
-    [SerializeField] private float recoverDuration = 0.5f;
+    [SerializeField] private float windupDuration = 0.4f;
+    [SerializeField] private float lungeDuration = 0.2f;
+    [SerializeField] private float lungeForce = 12f;
+    [SerializeField] private float recoverDuration = 0.6f;
 
     [Header("Attack")]
     [SerializeField] private float attackDamage = 2.5f;
-    [SerializeField] private float lungeCooldown = 1.2f;
+    [SerializeField] private float lungeCooldown = 1.5f;
 
     [Header("Visual Feedback")]
     [SerializeField] private float windupLeanBack = 15f;
-
-    [Header("CharacterController Setup")]
-    [SerializeField] private float ccHeight = 1.8f;
-    [SerializeField] private float ccRadius = 0.4f;
-    [SerializeField] private Vector3 ccCenter = new Vector3(0f, 0.9f, 0f);
 
     private State currentState = State.Idle;
     private float stateTimer = 0f;
@@ -44,15 +39,15 @@ public class EnemyAI : MonoBehaviour
 
     private Vector3 lungeDirection;
     private Transform player;
-    private CharacterController cc;
 
     private Transform modelTransform;
     private Quaternion modelOriginalRot;
 
-    private float gravity = -20f;
-    private float verticalVelocity = 0f;
-
     private float logTimer = 0f;
+
+    // Ground-locked movement (no CharacterController, no NavMesh)
+    private float groundY = 0f;
+    private bool groundFound = false;
 
     void Start()
     {
@@ -69,17 +64,10 @@ public class EnemyAI : MonoBehaviour
         if (rb != null)
             Destroy(rb);
 
-        // Setup CharacterController
-        cc = GetComponent<CharacterController>();
-        if (cc == null)
-            cc = gameObject.AddComponent<CharacterController>();
-
-        cc.height = ccHeight;
-        cc.radius = ccRadius;
-        cc.center = ccCenter;
-        cc.slopeLimit = 45f;
-        cc.stepOffset = 0.3f;
-        cc.skinWidth = 0.08f;
+        // Remove CharacterController if present (we don't use it anymore)
+        var cc = GetComponent<CharacterController>();
+        if (cc != null)
+            Destroy(cc);
 
         if (transform.childCount > 0)
         {
@@ -91,23 +79,49 @@ public class EnemyAI : MonoBehaviour
         if (playerObj != null)
             player = playerObj.transform;
 
-        // Snap to ground immediately
-        SnapToGround();
+        // Find the ground Y by raycasting down
+        FindGround();
 
-        Debug.Log($"[ENEMY] START | pos:{transform.position} | playerPos:{(player != null ? player.position.ToString() : "null")}");
+        Debug.Log($"[ENEMY] START | pos:{transform.position} | groundY:{groundY} | playerPos:{(player != null ? player.position.ToString() : "null")}");
     }
 
-    private void SnapToGround()
+    private void FindGround()
     {
-        RaycastHit hit;
-        Vector3 rayStart = transform.position + Vector3.up * 5f;
-
-        if (Physics.Raycast(rayStart, Vector3.down, out hit, 20f))
+        // Try multiple ray origins to find the floor
+        Vector3[] rayOrigins = new Vector3[]
         {
-            Vector3 groundPos = hit.point;
-            transform.position = groundPos;
-            Debug.Log($"[ENEMY] Snapped to ground Y:{groundPos.y:F2}");
+            transform.position + Vector3.up * 10f,
+            transform.position + Vector3.up * 5f,
+            transform.position + Vector3.up * 2f,
+        };
+
+        foreach (var origin in rayOrigins)
+        {
+            RaycastHit hit;
+            if (Physics.Raycast(origin, Vector3.down, out hit, 30f))
+            {
+                groundY = hit.point.y;
+                groundFound = true;
+                Debug.Log($"[ENEMY] Ground found at Y:{groundY:F2} (hit: {hit.collider.name})");
+                break;
+            }
         }
+
+        if (!groundFound)
+        {
+            // Fallback: use player Y when available
+            if (player != null)
+            {
+                groundY = player.position.y;
+                groundFound = true;
+                Debug.Log($"[ENEMY] No ground raycast, using player Y:{groundY:F2}");
+            }
+        }
+
+        // Snap to ground
+        Vector3 pos = transform.position;
+        pos.y = groundY;
+        transform.position = pos;
     }
 
     void Update()
@@ -116,6 +130,9 @@ public class EnemyAI : MonoBehaviour
 
         cooldownTimer -= Time.deltaTime;
         logTimer -= Time.deltaTime;
+
+        // Always keep enemy at ground level
+        KeepOnGround();
 
         switch (currentState)
         {
@@ -137,6 +154,20 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    private void KeepOnGround()
+    {
+        // Continuously update ground Y based on player
+        // (both are on the same floor)
+        if (player != null)
+        {
+            groundY = player.position.y;
+        }
+
+        Vector3 pos = transform.position;
+        pos.y = groundY;
+        transform.position = pos;
+    }
+
     private float GetHorizontalDistance()
     {
         Vector3 a = transform.position;
@@ -146,47 +177,8 @@ public class EnemyAI : MonoBehaviour
         return Vector3.Distance(a, b);
     }
 
-    private void ApplyGravity()
-    {
-        if (cc == null) return;
-
-        if (cc.isGrounded)
-            verticalVelocity = -2f;
-        else
-            verticalVelocity += gravity * Time.deltaTime;
-    }
-
-    private void MoveTowardsPlayer()
-    {
-        if (cc == null) return;
-
-        Vector3 dir = player.position - transform.position;
-        dir.y = 0f;
-
-        if (dir.sqrMagnitude < 0.25f) return; // Stop if very close
-
-        dir.Normalize();
-
-        // Smooth rotation
-        Quaternion targetRot = Quaternion.LookRotation(dir);
-        transform.rotation = Quaternion.RotateTowards(
-            transform.rotation,
-            targetRot,
-            rotationSpeed * Time.deltaTime
-        );
-
-        // Move with gravity
-        ApplyGravity();
-        Vector3 move = (dir * chaseSpeed) + (Vector3.up * verticalVelocity);
-        cc.Move(move * Time.deltaTime);
-    }
-
     private void UpdateIdle()
     {
-        ApplyGravity();
-        if (cc != null)
-            cc.Move(Vector3.up * verticalVelocity * Time.deltaTime);
-
         if (GetHorizontalDistance() <= detectionRange)
             ChangeState(State.Chase);
     }
@@ -195,11 +187,31 @@ public class EnemyAI : MonoBehaviour
     {
         float dist = GetHorizontalDistance();
 
-        MoveTowardsPlayer();
+        // Direction to player (horizontal only)
+        Vector3 dir = player.position - transform.position;
+        dir.y = 0f;
+
+        if (dir.sqrMagnitude > 0.25f)
+        {
+            dir.Normalize();
+
+            // Smooth rotation
+            Quaternion targetRot = Quaternion.LookRotation(dir);
+            transform.rotation = Quaternion.RotateTowards(
+                transform.rotation,
+                targetRot,
+                rotationSpeed * Time.deltaTime
+            );
+
+            // Move horizontally only
+            Vector3 move = dir * chaseSpeed * Time.deltaTime;
+            move.y = 0f;
+            transform.position += move;
+        }
 
         if (logTimer <= 0f)
         {
-            Debug.Log($"[ENEMY] CHASE | dist:{dist:F1} | grounded:{cc.isGrounded} | pos:{transform.position}");
+            Debug.Log($"[ENEMY] CHASE | dist:{dist:F1} | pos:{transform.position} | playerPos:{player.position}");
             logTimer = 1f;
         }
 
@@ -210,10 +222,6 @@ public class EnemyAI : MonoBehaviour
     private void UpdateWindup()
     {
         stateTimer -= Time.deltaTime;
-
-        ApplyGravity();
-        if (cc != null)
-            cc.Move(Vector3.up * verticalVelocity * Time.deltaTime);
 
         // Face player
         Vector3 lookDir = player.position - transform.position;
@@ -245,14 +253,13 @@ public class EnemyAI : MonoBehaviour
         float t = 1f - (stateTimer / lungeDuration);
         float dashCurve = Mathf.Sin(t * Mathf.PI * 0.5f);
 
-        ApplyGravity();
+        // Move forward
+        Vector3 move = lungeDirection * lungeForce * dashCurve * Time.deltaTime;
+        move.y = 0f;
+        transform.position += move;
 
-        // Lunge speed: lungeForce only, NO multiplier stacking
-        float currentSpeed = lungeForce * dashCurve;
-        Vector3 move = (lungeDirection * currentSpeed) + (Vector3.up * verticalVelocity);
-
-        if (cc != null)
-            cc.Move(move * Time.deltaTime);
+        // Check for player hit with overlap sphere
+        CheckLungeHitSphere();
 
         if (modelTransform != null)
         {
@@ -264,13 +271,30 @@ public class EnemyAI : MonoBehaviour
             ChangeState(State.LungeRecover);
     }
 
+    private void CheckLungeHitSphere()
+    {
+        if (hasHitThisLunge) return;
+
+        // Check a sphere around the enemy for the player
+        Collider[] hits = Physics.OverlapSphere(transform.position, 1.5f);
+        foreach (var hit in hits)
+        {
+            if (hit.CompareTag("Player"))
+            {
+                hasHitThisLunge = true;
+
+                if (GameTimer.Instance != null)
+                    GameTimer.Instance.RemoveTime(attackDamage);
+
+                Debug.Log($"[ENEMY] LUNGE HIT! -{attackDamage}s");
+                return;
+            }
+        }
+    }
+
     private void UpdateRecover()
     {
         stateTimer -= Time.deltaTime;
-
-        ApplyGravity();
-        if (cc != null)
-            cc.Move(Vector3.up * verticalVelocity * Time.deltaTime);
 
         if (modelTransform != null)
         {
@@ -313,25 +337,6 @@ public class EnemyAI : MonoBehaviour
                 Debug.Log("[ENEMY] → RECOVER");
                 break;
         }
-    }
-
-    private void OnControllerColliderHit(ControllerColliderHit hit)
-    {
-        CheckPlayerHit(hit.gameObject);
-    }
-
-    private void CheckPlayerHit(GameObject obj)
-    {
-        if (currentState != State.LungeDash) return;
-        if (hasHitThisLunge) return;
-        if (!obj.CompareTag("Player")) return;
-
-        hasHitThisLunge = true;
-
-        if (GameTimer.Instance != null)
-            GameTimer.Instance.RemoveTime(attackDamage);
-
-        Debug.Log($"[ENEMY] LUNGE HIT! -{attackDamage}s");
     }
 
     void OnDrawGizmosSelected()
