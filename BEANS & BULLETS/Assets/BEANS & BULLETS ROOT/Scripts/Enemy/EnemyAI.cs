@@ -1,5 +1,4 @@
-using UnityEngine;
-using UnityEngine.AI;
+ï»¿using UnityEngine;
 
 public class EnemyAI : MonoBehaviour
 {
@@ -14,15 +13,16 @@ public class EnemyAI : MonoBehaviour
 
     [Header("Detection")]
     [SerializeField] private float detectionRange = 30f;
-    [SerializeField] private float lungeRange = 3f;
+    [SerializeField] private float lungeRange = 3.5f;
 
     [Header("Movement")]
-    [SerializeField] private float chaseSpeed = 10f;
+    [SerializeField] private float chaseSpeed = 7f;
+    [SerializeField] private float rotationSpeed = 720f;
 
     [Header("Lunge")]
     [SerializeField] private float windupDuration = 0.25f;
     [SerializeField] private float lungeDuration = 0.18f;
-    [SerializeField] private float lungeForce = 25f;
+    [SerializeField] private float lungeForce = 15f;
     [SerializeField] private float recoverDuration = 0.5f;
 
     [Header("Attack")]
@@ -32,38 +32,54 @@ public class EnemyAI : MonoBehaviour
     [Header("Visual Feedback")]
     [SerializeField] private float windupLeanBack = 15f;
 
-    // State
+    [Header("CharacterController Setup")]
+    [SerializeField] private float ccHeight = 1.8f;
+    [SerializeField] private float ccRadius = 0.4f;
+    [SerializeField] private Vector3 ccCenter = new Vector3(0f, 0.9f, 0f);
+
     private State currentState = State.Idle;
     private float stateTimer = 0f;
     private float cooldownTimer = 0f;
     private bool hasHitThisLunge = false;
 
-    // Lunge
     private Vector3 lungeDirection;
-    private Vector3 lungeStartPos;
-
-    // References
-    private NavMeshAgent agent;
     private Transform player;
-    private Rigidbody rb;
+    private CharacterController cc;
 
-    // Visual
     private Transform modelTransform;
     private Quaternion modelOriginalRot;
 
+    private float gravity = -20f;
+    private float verticalVelocity = 0f;
+
+    private float logTimer = 0f;
+
     void Start()
     {
-        agent = GetComponent<NavMeshAgent>();
-        agent.speed = chaseSpeed;
-        agent.stoppingDistance = 0f;
-
-        rb = GetComponent<Rigidbody>();
-        if (rb == null)
+        // Remove NavMeshAgent if present
+        var agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (agent != null)
         {
-            rb = gameObject.AddComponent<Rigidbody>();
+            agent.enabled = false;
+            Destroy(agent);
         }
-        rb.isKinematic = true;
-        rb.useGravity = false;
+
+        // Remove Rigidbody if present
+        var rb = GetComponent<Rigidbody>();
+        if (rb != null)
+            Destroy(rb);
+
+        // Setup CharacterController
+        cc = GetComponent<CharacterController>();
+        if (cc == null)
+            cc = gameObject.AddComponent<CharacterController>();
+
+        cc.height = ccHeight;
+        cc.radius = ccRadius;
+        cc.center = ccCenter;
+        cc.slopeLimit = 45f;
+        cc.stepOffset = 0.3f;
+        cc.skinWidth = 0.08f;
 
         if (transform.childCount > 0)
         {
@@ -75,8 +91,23 @@ public class EnemyAI : MonoBehaviour
         if (playerObj != null)
             player = playerObj.transform;
 
-        // DEBUG
-        Debug.Log($"ENEMY START | player:{player != null} agent:{agent != null} onNavMesh:{agent.isOnNavMesh} state:{currentState}");
+        // Snap to ground immediately
+        SnapToGround();
+
+        Debug.Log($"[ENEMY] START | pos:{transform.position} | playerPos:{(player != null ? player.position.ToString() : "null")}");
+    }
+
+    private void SnapToGround()
+    {
+        RaycastHit hit;
+        Vector3 rayStart = transform.position + Vector3.up * 5f;
+
+        if (Physics.Raycast(rayStart, Vector3.down, out hit, 20f))
+        {
+            Vector3 groundPos = hit.point;
+            transform.position = groundPos;
+            Debug.Log($"[ENEMY] Snapped to ground Y:{groundPos.y:F2}");
+        }
     }
 
     void Update()
@@ -84,6 +115,7 @@ public class EnemyAI : MonoBehaviour
         if (player == null) return;
 
         cooldownTimer -= Time.deltaTime;
+        logTimer -= Time.deltaTime;
 
         switch (currentState)
         {
@@ -105,46 +137,91 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    #region STATES
+    private float GetHorizontalDistance()
+    {
+        Vector3 a = transform.position;
+        Vector3 b = player.position;
+        a.y = 0f;
+        b.y = 0f;
+        return Vector3.Distance(a, b);
+    }
+
+    private void ApplyGravity()
+    {
+        if (cc == null) return;
+
+        if (cc.isGrounded)
+            verticalVelocity = -2f;
+        else
+            verticalVelocity += gravity * Time.deltaTime;
+    }
+
+    private void MoveTowardsPlayer()
+    {
+        if (cc == null) return;
+
+        Vector3 dir = player.position - transform.position;
+        dir.y = 0f;
+
+        if (dir.sqrMagnitude < 0.25f) return; // Stop if very close
+
+        dir.Normalize();
+
+        // Smooth rotation
+        Quaternion targetRot = Quaternion.LookRotation(dir);
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation,
+            targetRot,
+            rotationSpeed * Time.deltaTime
+        );
+
+        // Move with gravity
+        ApplyGravity();
+        Vector3 move = (dir * chaseSpeed) + (Vector3.up * verticalVelocity);
+        cc.Move(move * Time.deltaTime);
+    }
 
     private void UpdateIdle()
     {
-        float dist = Vector3.Distance(transform.position, player.position);
-        if (dist <= detectionRange)
-        {
+        ApplyGravity();
+        if (cc != null)
+            cc.Move(Vector3.up * verticalVelocity * Time.deltaTime);
+
+        if (GetHorizontalDistance() <= detectionRange)
             ChangeState(State.Chase);
-        }
     }
 
     private void UpdateChase()
     {
-        float dist = Vector3.Distance(transform.position, player.position);
+        float dist = GetHorizontalDistance();
 
-        agent.isStopped = false;
-        agent.SetDestination(player.position);
+        MoveTowardsPlayer();
 
-        // DEBUG
-        Debug.Log($"CHASE | dist:{dist:F1} agentStopped:{agent.isStopped} onNavMesh:{agent.isOnNavMesh} hasPath:{agent.hasPath} velocity:{agent.velocity.magnitude:F1}");
-
-        LookAtPlayer();
+        if (logTimer <= 0f)
+        {
+            Debug.Log($"[ENEMY] CHASE | dist:{dist:F1} | grounded:{cc.isGrounded} | pos:{transform.position}");
+            logTimer = 1f;
+        }
 
         if (dist <= lungeRange && cooldownTimer <= 0f)
-        {
             ChangeState(State.LungeWindup);
-        }
     }
 
     private void UpdateWindup()
     {
         stateTimer -= Time.deltaTime;
 
-        // Parar movimiento
-        agent.isStopped = true;
+        ApplyGravity();
+        if (cc != null)
+            cc.Move(Vector3.up * verticalVelocity * Time.deltaTime);
 
-        // Mirar al player
-        LookAtPlayer();
+        // Face player
+        Vector3 lookDir = player.position - transform.position;
+        lookDir.y = 0f;
+        if (lookDir.sqrMagnitude > 0.01f)
+            transform.rotation = Quaternion.LookRotation(lookDir);
 
-        // Inclinarse hacia atrás (telegraph visual)
+        // Visual telegraph
         if (modelTransform != null)
         {
             float t = 1f - (stateTimer / windupDuration);
@@ -154,11 +231,9 @@ public class EnemyAI : MonoBehaviour
 
         if (stateTimer <= 0f)
         {
-            // Calcular dirección del lunge AHORA
-            lungeDirection = (player.position - transform.position).normalized;
+            lungeDirection = (player.position - transform.position);
             lungeDirection.y = 0f;
-            lungeStartPos = transform.position;
-
+            lungeDirection.Normalize();
             ChangeState(State.LungeDash);
         }
     }
@@ -167,18 +242,18 @@ public class EnemyAI : MonoBehaviour
     {
         stateTimer -= Time.deltaTime;
 
-        // Desactivar NavMeshAgent durante el dash
-        agent.isStopped = true;
-        agent.updatePosition = false;
-
-        // Mover hacia adelante con fuerza
         float t = 1f - (stateTimer / lungeDuration);
-        float dashCurve = Mathf.Sin(t * Mathf.PI * 0.5f); // ease-out
+        float dashCurve = Mathf.Sin(t * Mathf.PI * 0.5f);
 
-        Vector3 movement = lungeDirection * lungeForce * Time.deltaTime * (1f + dashCurve);
-        transform.position += movement;
+        ApplyGravity();
 
-        // Inclinar hacia adelante durante dash
+        // Lunge speed: lungeForce only, NO multiplier stacking
+        float currentSpeed = lungeForce * dashCurve;
+        Vector3 move = (lungeDirection * currentSpeed) + (Vector3.up * verticalVelocity);
+
+        if (cc != null)
+            cc.Move(move * Time.deltaTime);
+
         if (modelTransform != null)
         {
             float lean = Mathf.Sin(t * Mathf.PI) * 25f;
@@ -186,19 +261,17 @@ public class EnemyAI : MonoBehaviour
         }
 
         if (stateTimer <= 0f)
-        {
             ChangeState(State.LungeRecover);
-        }
     }
 
     private void UpdateRecover()
     {
         stateTimer -= Time.deltaTime;
 
-        agent.updatePosition = true;
-        agent.isStopped = true;
+        ApplyGravity();
+        if (cc != null)
+            cc.Move(Vector3.up * verticalVelocity * Time.deltaTime);
 
-        // Volver modelo a rotación original
         if (modelTransform != null)
         {
             modelTransform.localRotation = Quaternion.Lerp(
@@ -208,12 +281,6 @@ public class EnemyAI : MonoBehaviour
             );
         }
 
-        // Reposicionar agent en navmesh
-        if (agent.isOnNavMesh)
-        {
-            agent.nextPosition = transform.position;
-        }
-
         if (stateTimer <= 0f)
         {
             cooldownTimer = lungeCooldown;
@@ -221,106 +288,57 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-    #endregion
-
-    #region STATE MANAGEMENT
-
     private void ChangeState(State newState)
     {
         currentState = newState;
-
         switch (newState)
         {
             case State.Idle:
                 stateTimer = 0f;
                 break;
-
             case State.Chase:
-                agent.updatePosition = true;
-                agent.isStopped = false;
+                Debug.Log("[ENEMY] â†’ CHASE");
                 break;
-
             case State.LungeWindup:
                 stateTimer = windupDuration;
                 hasHitThisLunge = false;
+                Debug.Log("[ENEMY] â†’ WINDUP");
                 break;
-
             case State.LungeDash:
                 stateTimer = lungeDuration;
+                Debug.Log("[ENEMY] â†’ LUNGE");
                 break;
-
             case State.LungeRecover:
                 stateTimer = recoverDuration;
+                Debug.Log("[ENEMY] â†’ RECOVER");
                 break;
         }
     }
-
-    #endregion
-
-    #region COLLISION
 
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {
         CheckPlayerHit(hit.gameObject);
     }
 
-    private void OnCollisionEnter(Collision collision)
-    {
-        CheckPlayerHit(collision.gameObject);
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        CheckPlayerHit(other.gameObject);
-    }
-
     private void CheckPlayerHit(GameObject obj)
     {
-        // Solo hace daño durante el lunge dash
         if (currentState != State.LungeDash) return;
-
-        // Solo una vez por lunge
         if (hasHitThisLunge) return;
-
         if (!obj.CompareTag("Player")) return;
 
         hasHitThisLunge = true;
 
-        // Quitar tiempo del combat timer
         if (GameTimer.Instance != null)
-        {
             GameTimer.Instance.RemoveTime(attackDamage);
-        }
 
-        Debug.Log($"FILTH LUNGE HIT! -{attackDamage}s");
+        Debug.Log($"[ENEMY] LUNGE HIT! -{attackDamage}s");
     }
-
-    #endregion
-
-    #region HELPERS
-
-    private void LookAtPlayer()
-    {
-        Vector3 lookDir = player.position - transform.position;
-        lookDir.y = 0f;
-        if (lookDir.sqrMagnitude > 0.01f)
-        {
-            transform.rotation = Quaternion.LookRotation(lookDir);
-        }
-    }
-
-    #endregion
-
-    #region DEBUG
 
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectionRange);
-
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, lungeRange);
     }
-
-    #endregion
 }
