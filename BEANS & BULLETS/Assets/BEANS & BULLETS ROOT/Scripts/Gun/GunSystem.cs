@@ -309,6 +309,7 @@ public class GunSystem : MonoBehaviour
     {
         isReloading = false;
         currentAmmo = stats.magSize;
+        timeSinceLastShot = stats.fireRate; // PERMITE DISPARAR INMEDIATAMENTE
         UpdateHUD();
     }
 

@@ -232,7 +232,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GunTilt
   playerMovement: {fileID: 2578529339699003369}
-  tiltAmount: 6
+  tiltAmount: 8
   tiltSmooth: 3
 --- !u!1 &3472522343173421141
 GameObject:
@@ -506,10 +506,149 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 920bd11c194fcb14391ace1e9f2d6b76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GunRecoil
-  recoilKick: 30
+  recoilKick: 50
   recoilSnap: 20
-  recoilReturn: 5
-  spinSpeedMultiplier: 2.5
+  recoilReturn: 10
+  spinDegrees: 720
+  spinCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.55090344
+      value: 0.85056484
+      inSlope: 1.610525
+      outSlope: 1.610525
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.8004033
+      value: 1.000814
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  positionCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 3.3604522
+      outSlope: 3.3604522
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.31494683
+    - serializedVersion: 3
+      time: 0.10009209
+      value: 0.30012462
+      inSlope: 2.823104
+      outSlope: 2.823104
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.4199187
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.5005294
+      value: 1.0004942
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.850127
+      value: 0.30004925
+      inSlope: -2.6855576
+      outSlope: -2.6855576
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0.004562378
+      inSlope: -1.574313
+      outSlope: -1.574313
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.4560095
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spinTiltX: 8
+  spinTiltY: 5
+  spinPositionOffset: {x: 0, y: -0.06, z: 0.02}
+  overshootDegrees: 4
+  overshootCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0.0007398878
+      value: -0.000026538735
+      inSlope: -0.000038091686
+      outSlope: -0.000038091686
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.8500237
+      value: -0.00005888939
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.9300084
+      value: 0.99996984
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1.0000844
+      value: 0.0011255872
+      inSlope: -9.213036
+      outSlope: -9.213036
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.023516368
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!114 &1433205362445853381
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -696,7 +835,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1112248776346918941}
         m_TargetAssemblyTypeName: GunSystem, Assembly-CSharp
-        m_MethodName: OnShoot
+        m_MethodName: OnFire
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -710,9 +849,9 @@ MonoBehaviour:
     m_ActionName: 'Player/Attack[/Mouse/leftButton,/Keyboard/enter]'
   - m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 462035670538126122}
+      - m_Target: {fileID: 4036095114019597210}
         m_TargetAssemblyTypeName: PlayerInteract, Assembly-CSharp
-        m_MethodName: OnInteract
+        m_MethodName: 
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -915,7 +1054,7 @@ MonoBehaviour:
   bulletType: {fileID: 11400000, guid: 7d086531362944948b2490c392afd1b3, type: 2}
   hitMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 129
   gunRecoil: {fileID: 7981849439562247554}
   muzzleFlash: {fileID: 0}
   audioSource: {fileID: 0}
@@ -1045,7 +1184,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 311
+    m_Bits: 439
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
