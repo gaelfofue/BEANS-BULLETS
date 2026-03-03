@@ -3,96 +3,324 @@ using UnityEngine.AI;
 
 public class EnemyAI : MonoBehaviour
 {
-    [Header("Detection")]
-    public float detectionRange = 30f;
-    public float attackRange = 2f;
+    private enum State
+    {
+        Idle,
+        Chase,
+        LungeWindup,
+        LungeDash,
+        LungeRecover
+    }
 
-    [Header("Attack")]
-    public float attackDamage = 10f;
-    public float attackCooldown = 1f;
-    private float nextAttackTime;
+    [Header("Detection")]
+    [SerializeField] private float detectionRange = 30f;
+    [SerializeField] private float lungeRange = 3f;
 
     [Header("Movement")]
-    public float moveSpeed = 8f;
+    [SerializeField] private float chaseSpeed = 10f;
+
+    [Header("Lunge")]
+    [SerializeField] private float windupDuration = 0.25f;
+    [SerializeField] private float lungeDuration = 0.18f;
+    [SerializeField] private float lungeForce = 25f;
+    [SerializeField] private float recoverDuration = 0.5f;
+
+    [Header("Attack")]
+    [SerializeField] private float attackDamage = 2.5f;
+    [SerializeField] private float lungeCooldown = 1.2f;
+
+    [Header("Visual Feedback")]
+    [SerializeField] private float windupLeanBack = 15f;
+
+    // State
+    private State currentState = State.Idle;
+    private float stateTimer = 0f;
+    private float cooldownTimer = 0f;
+    private bool hasHitThisLunge = false;
+
+    // Lunge
+    private Vector3 lungeDirection;
+    private Vector3 lungeStartPos;
 
     // References
     private NavMeshAgent agent;
     private Transform player;
-    private bool playerDetected = false;
+    private Rigidbody rb;
+
+    // Visual
+    private Transform modelTransform;
+    private Quaternion modelOriginalRot;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
-        agent.speed = moveSpeed;
+        agent.speed = chaseSpeed;
+        agent.stoppingDistance = 0f;
 
-        // Buscar player automáticamente
+        rb = GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = gameObject.AddComponent<Rigidbody>();
+        }
+        rb.isKinematic = true;
+        rb.useGravity = false;
+
+        if (transform.childCount > 0)
+        {
+            modelTransform = transform.GetChild(0);
+            modelOriginalRot = modelTransform.localRotation;
+        }
+
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
-        {
             player = playerObj.transform;
-        }
+
+        // DEBUG
+        Debug.Log($"ENEMY START | player:{player != null} agent:{agent != null} onNavMesh:{agent.isOnNavMesh} state:{currentState}");
     }
 
     void Update()
     {
         if (player == null) return;
 
-        float distance = Vector3.Distance(transform.position, player.position);
+        cooldownTimer -= Time.deltaTime;
 
-        // Detectar
-        if (distance <= detectionRange)
+        switch (currentState)
         {
-            playerDetected = true;
-        }
-
-        if (!playerDetected) return;
-
-        // Perseguir o atacar
-        if (distance > attackRange)
-        {
-            Chase();
-        }
-        else
-        {
-            Attack();
+            case State.Idle:
+                UpdateIdle();
+                break;
+            case State.Chase:
+                UpdateChase();
+                break;
+            case State.LungeWindup:
+                UpdateWindup();
+                break;
+            case State.LungeDash:
+                UpdateLungeDash();
+                break;
+            case State.LungeRecover:
+                UpdateRecover();
+                break;
         }
     }
 
-    private void Chase()
+    #region STATES
+
+    private void UpdateIdle()
     {
+        float dist = Vector3.Distance(transform.position, player.position);
+        if (dist <= detectionRange)
+        {
+            ChangeState(State.Chase);
+        }
+    }
+
+    private void UpdateChase()
+    {
+        float dist = Vector3.Distance(transform.position, player.position);
+
         agent.isStopped = false;
         agent.SetDestination(player.position);
+
+        // DEBUG
+        Debug.Log($"CHASE | dist:{dist:F1} agentStopped:{agent.isStopped} onNavMesh:{agent.isOnNavMesh} hasPath:{agent.hasPath} velocity:{agent.velocity.magnitude:F1}");
+
+        LookAtPlayer();
+
+        if (dist <= lungeRange && cooldownTimer <= 0f)
+        {
+            ChangeState(State.LungeWindup);
+        }
     }
 
-    private void Attack()
+    private void UpdateWindup()
     {
-        // Parar
+        stateTimer -= Time.deltaTime;
+
+        // Parar movimiento
         agent.isStopped = true;
 
         // Mirar al player
-        Vector3 lookDir = player.position - transform.position;
-        lookDir.y = 0;
-        if (lookDir != Vector3.zero)
-            transform.rotation = Quaternion.LookRotation(lookDir);
+        LookAtPlayer();
 
-        // Atacar con cooldown
-        if (Time.time >= nextAttackTime)
+        // Inclinarse hacia atrás (telegraph visual)
+        if (modelTransform != null)
         {
-            nextAttackTime = Time.time + attackCooldown;
+            float t = 1f - (stateTimer / windupDuration);
+            float lean = Mathf.Sin(t * Mathf.PI * 0.5f) * windupLeanBack;
+            modelTransform.localRotation = modelOriginalRot * Quaternion.Euler(-lean, 0f, 0f);
+        }
 
-            // TODO: Hacer daño al player cuando 
-            // tengamos PlayerHealth
-            Debug.Log("Enemy attacks for " + attackDamage + " damage!");
+        if (stateTimer <= 0f)
+        {
+            // Calcular dirección del lunge AHORA
+            lungeDirection = (player.position - transform.position).normalized;
+            lungeDirection.y = 0f;
+            lungeStartPos = transform.position;
+
+            ChangeState(State.LungeDash);
         }
     }
 
-    // Debug visual
+    private void UpdateLungeDash()
+    {
+        stateTimer -= Time.deltaTime;
+
+        // Desactivar NavMeshAgent durante el dash
+        agent.isStopped = true;
+        agent.updatePosition = false;
+
+        // Mover hacia adelante con fuerza
+        float t = 1f - (stateTimer / lungeDuration);
+        float dashCurve = Mathf.Sin(t * Mathf.PI * 0.5f); // ease-out
+
+        Vector3 movement = lungeDirection * lungeForce * Time.deltaTime * (1f + dashCurve);
+        transform.position += movement;
+
+        // Inclinar hacia adelante durante dash
+        if (modelTransform != null)
+        {
+            float lean = Mathf.Sin(t * Mathf.PI) * 25f;
+            modelTransform.localRotation = modelOriginalRot * Quaternion.Euler(lean, 0f, 0f);
+        }
+
+        if (stateTimer <= 0f)
+        {
+            ChangeState(State.LungeRecover);
+        }
+    }
+
+    private void UpdateRecover()
+    {
+        stateTimer -= Time.deltaTime;
+
+        agent.updatePosition = true;
+        agent.isStopped = true;
+
+        // Volver modelo a rotación original
+        if (modelTransform != null)
+        {
+            modelTransform.localRotation = Quaternion.Lerp(
+                modelTransform.localRotation,
+                modelOriginalRot,
+                Time.deltaTime * 8f
+            );
+        }
+
+        // Reposicionar agent en navmesh
+        if (agent.isOnNavMesh)
+        {
+            agent.nextPosition = transform.position;
+        }
+
+        if (stateTimer <= 0f)
+        {
+            cooldownTimer = lungeCooldown;
+            ChangeState(State.Chase);
+        }
+    }
+
+    #endregion
+
+    #region STATE MANAGEMENT
+
+    private void ChangeState(State newState)
+    {
+        currentState = newState;
+
+        switch (newState)
+        {
+            case State.Idle:
+                stateTimer = 0f;
+                break;
+
+            case State.Chase:
+                agent.updatePosition = true;
+                agent.isStopped = false;
+                break;
+
+            case State.LungeWindup:
+                stateTimer = windupDuration;
+                hasHitThisLunge = false;
+                break;
+
+            case State.LungeDash:
+                stateTimer = lungeDuration;
+                break;
+
+            case State.LungeRecover:
+                stateTimer = recoverDuration;
+                break;
+        }
+    }
+
+    #endregion
+
+    #region COLLISION
+
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        CheckPlayerHit(hit.gameObject);
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        CheckPlayerHit(collision.gameObject);
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        CheckPlayerHit(other.gameObject);
+    }
+
+    private void CheckPlayerHit(GameObject obj)
+    {
+        // Solo hace daño durante el lunge dash
+        if (currentState != State.LungeDash) return;
+
+        // Solo una vez por lunge
+        if (hasHitThisLunge) return;
+
+        if (!obj.CompareTag("Player")) return;
+
+        hasHitThisLunge = true;
+
+        // Quitar tiempo del combat timer
+        if (GameTimer.Instance != null)
+        {
+            GameTimer.Instance.RemoveTime(attackDamage);
+        }
+
+        Debug.Log($"FILTH LUNGE HIT! -{attackDamage}s");
+    }
+
+    #endregion
+
+    #region HELPERS
+
+    private void LookAtPlayer()
+    {
+        Vector3 lookDir = player.position - transform.position;
+        lookDir.y = 0f;
+        if (lookDir.sqrMagnitude > 0.01f)
+        {
+            transform.rotation = Quaternion.LookRotation(lookDir);
+        }
+    }
+
+    #endregion
+
+    #region DEBUG
+
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectionRange);
 
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, attackRange);
+        Gizmos.DrawWireSphere(transform.position, lungeRange);
     }
+
+    #endregion
 }

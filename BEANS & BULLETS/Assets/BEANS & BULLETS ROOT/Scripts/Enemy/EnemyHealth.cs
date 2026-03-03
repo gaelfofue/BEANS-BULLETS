@@ -3,7 +3,7 @@ using UnityEngine;
 public class EnemyHealth : MonoBehaviour
 {
     [Header("Stats")]
-    public float maxHealth = 100f;
+    public float maxHealth = 50f;
     private float currentHealth;
 
     [Header("Feedback")]
@@ -20,7 +20,6 @@ public class EnemyHealth : MonoBehaviour
     {
         myRoom = room;
     }
-
 
     public void TakeDamage(float damage)
     {

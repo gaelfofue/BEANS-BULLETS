@@ -91,6 +91,13 @@ public class GameTimer : MonoBehaviour
         currentTime = Mathf.Min(currentTime, maxTime);
     }
 
+    public void RemoveTime(float amount)
+    {
+        if (isDead) return;
+        currentTime -= amount;
+        if (currentTime < 0f) currentTime = 0f;
+    }
+
     public void AddCustomTime(float amount)
     {
         if (isDead) return;

@@ -13,14 +13,12 @@ public class BT_Standard : BulletType
 
     public override void OnHit(RaycastHit hit, float damage, Vector3 shootDirection)
     {
-        // Efecto visual
         if (hitEffectPrefab != null)
         {
             GameObject effect = Instantiate(hitEffectPrefab, hit.point, Quaternion.LookRotation(hit.normal));
             Destroy(effect, 2f);
         }
 
-        // Daño
         EnemyHealth enemy = hit.collider.GetComponentInParent<EnemyHealth>();
         if (enemy != null)
         {
@@ -29,9 +27,6 @@ public class BT_Standard : BulletType
                 finalDamage *= 2f;
 
             enemy.TakeDamage(finalDamage);
-
-            if (GameTimer.Instance != null)
-                GameTimer.Instance.AddHitTime();
         }
     }
 }
