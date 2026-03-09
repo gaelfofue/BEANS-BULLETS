@@ -4,13 +4,13 @@ using UnityEngine.UI;
 public class CrosshairUI : MonoBehaviour
 {
     [Header("Crosshair")]
-    public RawImage crosshair;        // Cambiado a RawImage
+    public Image crosshair;        // Cambiado a RawImage
     public float normalSize = 20f;
     public float shootSize = 30f;
     public float shrinkSpeed = 8f;
 
     [Header("Hitmarker")]
-    public RawImage hitmarker;         // Cambiado a RawImage
+    public Image hitmarker;         // Cambiado a RawImage
     public float hitmarkerDuration = 0.15f;
     private float hitmarkerTimer = 0f;
 
