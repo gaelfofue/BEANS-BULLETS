@@ -1,22 +1,20 @@
-// RoomPiece.cs
-
 using UnityEngine;
 using System.Collections.Generic;
 
 public class RoomPiece : MonoBehaviour
 {
-    [Header("=== TYPE ===")]
+    [Header("TYPE")]
     [SerializeField] private PieceType pieceType;
 
-    [Header("=== CONNECTION POINTS ===")]
+    [Header("CONNECTION POINTS")]
     [SerializeField] private Transform entryPoint;
     [SerializeField] private Transform exitPoint;
 
-    [Header("=== DOORS (solo salas) ===")]
+    [Header("DOORS (solo salas)")]
     [SerializeField] private Door entryDoor;
     [SerializeField] private Door exitDoor;
 
-    [Header("=== ENEMIES (solo combat) ===")]
+    [Header("ENEMIES (solo combat)")]
     [SerializeField] private Transform[] spawnPoints;
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private int enemyCount = 1;
@@ -80,14 +78,20 @@ public class RoomPiece : MonoBehaviour
 
         for (int i = 0; i < enemyCount; i++)
         {
-            Transform sp = spawnPoints[i % spawnPoints.Length];
+            Transform sp = spawnPoints[i %  spawnPoints.Length];
             GameObject go = Instantiate(enemyPrefab, sp.position, sp.rotation);
 
-            EnemyHealth health = go.GetComponent<EnemyHealth>();
+            // GetComponentInChildren busca en el objeto y en todos sus hijos
+            EnemyHealth health = go.GetComponentInChildren<EnemyHealth>();
             if (health != null)
             {
                 activeEnemies.Add(health);
                 health.SetRoom(this);
+                Debug.Log($"[ROOM] Enemy spawned and registered, Total: {activeEnemies.Count}");
+            }
+            else
+            {
+                Debug.LogError($"[ROOM] Enemy prefab has no EnemyHealth! Prefab: {enemyPrefab.name}");
             }
         }
     }

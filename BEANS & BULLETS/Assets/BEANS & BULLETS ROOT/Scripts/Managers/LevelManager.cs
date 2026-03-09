@@ -1,6 +1,4 @@
-﻿// LevelManager.cs
-
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -9,15 +7,15 @@ public class LevelManager : MonoBehaviour
 {
     public static LevelManager Instance { get; private set; }
 
-    [Header("=== SCENES ===")]
+    [Header("SCENES")]
     [SerializeField] private string[] combatScenes;
     [SerializeField] private string[] corridorScenes;
     [SerializeField] private string[] shopScenes;
 
-    [Header("=== SPAWN ROOM ===")]
+    [Header("SPAWN ROOM")]
     [SerializeField] private RoomPiece spawnRoom;
 
-    [Header("=== SHOP FREQUENCY ===")]
+    [Header("SHOP FREQUENCY")]
     [SerializeField] private int shopEveryXRooms = 3;
 
     // Todas las piezas en orden
@@ -80,7 +78,7 @@ public class LevelManager : MonoBehaviour
         yield return StartCoroutine(LoadOnePiece());
 
         initialLoadDone = true;
-        Debug.Log($"=== INITIAL LOAD COMPLETE === Piezas: {pieces.Count}");
+        Debug.Log($"INITIAL LOAD COMPLETE Piezas: {pieces.Count}");
     }
 
     // ============================
@@ -105,7 +103,7 @@ public class LevelManager : MonoBehaviour
         int previousIndex = playerIndex;
         playerIndex = newIndex;
 
-        Debug.Log($"=== PLAYER MOVED === Pieza {playerIndex}: {piece.gameObject.name} ({piece.GetPieceType()})");
+        Debug.Log($"PLAYER MOVED Pieza {playerIndex}: {piece.gameObject.name} ({piece.GetPieceType()})");
 
         // Activar la pieza actual
         piece.Activate();
