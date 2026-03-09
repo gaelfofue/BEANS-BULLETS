@@ -2,44 +2,81 @@ using UnityEngine;
 
 public class EnemyHealth : MonoBehaviour
 {
-    [Header("HealthSystem Management")]
-    [SerializeField] int maxHealth = 100; //Vida maxima del enemigo
-    [SerializeField] int health; //Vida actual del enemigo
+    [Header("Health")]
+    [SerializeField] int maxHealth = 100;
+    [SerializeField] int health;
 
-    [Header("Feedback Configuration")]
-    [SerializeField] Material damagedMat; //Material feedback de daño
-    [SerializeField] GameObject deathVFX; //Efecto de particulas de muerte
-    [SerializeField] MeshRenderer enemyRend; //Ref al componente que dibuja los materiales del enemigo en pantalla
-    Material baseMat; //Almacen del material base del enemigo
+    [Header("Feedback")]
+    [SerializeField] Material damagedMat;
+    [SerializeField] GameObject deathVFX;
+    [SerializeField] MeshRenderer enemyRend;
+    Material baseMat;
+
+    private RoomPiece myRoom;
 
     private void Awake()
     {
-        health = maxHealth; //La vida se pone en el maximo
-        baseMat = enemyRend.material; //Se referencia el material base
-
+        health = maxHealth;
+        if (enemyRend != null)
+            baseMat = enemyRend.material;
     }
 
-    void Update()
+    public void SetRoom(RoomPiece room)
     {
+        myRoom = room;
+    }
+
+    // Para el GunSystem del profesor (int)
+    public void TakeDamage(int damage)
+    {
+        health -= damage;
+
+        if (enemyRend != null && damagedMat != null)
+        {
+            enemyRend.material = damagedMat;
+            Invoke(nameof(ResetEnemyMaterial), 0.1f);
+        }
+
         if (health <= 0)
         {
-            health = 0; //La vida no puede bajar de 0
-            deathVFX.SetActive(true);
-            deathVFX.transform.position = transform.position;
-            gameObject.SetActive(false); //El enemigo se apaga = "muere"
+            health = 0;
+            Die();
         }
     }
 
-    public void TakeDamage(int damage)
+    // Para los BulletTypes de Bean & Bullets (float)
+    public void TakeDamage(float damage)
     {
-        health -= damage; //Quitarle una cantidad determinada de vida al enemigo
-        enemyRend.material = damagedMat; //Se cambia al material de feedback de daño
-        Invoke(nameof(ResetEnemyMaterial), 0.1f); //Espera de tiempo que permite ver el parpadeo
+        TakeDamage(Mathf.RoundToInt(damage));
+    }
+
+    void Die()
+    {
+        if (deathVFX != null)
+        {
+            deathVFX.transform.parent = null;
+            deathVFX.transform.position = transform.position;
+            deathVFX.SetActive(true);
+            Destroy(deathVFX, 3f);
+        }
+
+        if (GameTimer.Instance != null)
+            GameTimer.Instance.AddKillTime();
+
+        if (myRoom != null)
+            myRoom.OnEnemyDied(this);
+
+        // FindFirstObjectByType en vez de FindObjectOfType (Unity 6)
+        HUDController hud = FindFirstObjectByType<HUDController>();
+        if (hud != null)
+            hud.RegisterKill();
+
+        Destroy(gameObject);
     }
 
     void ResetEnemyMaterial()
     {
-        //Devuelve el material del enemigo a su material original
-        enemyRend.material = baseMat;
+        if (enemyRend != null && baseMat != null)
+            enemyRend.material = baseMat;
     }
 }

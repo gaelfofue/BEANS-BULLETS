@@ -154,7 +154,7 @@ GameObject:
   - component: {fileID: 5180861589970303309}
   - component: {fileID: 6788543934268055190}
   - component: {fileID: 5138134347293161218}
-  - component: {fileID: 3834605187265417367}
+  - component: {fileID: 8543425579482145247}
   m_Layer: 7
   m_Name: EnemyBody
   m_TagString: Untagged
@@ -229,7 +229,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 112
   m_CollisionDetection: 0
---- !u!114 &3834605187265417367
+--- !u!114 &8543425579482145247
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -241,8 +241,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d58623f8d3ba39e4d91da27eab739ba0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyHealth
-  maxHealth: 50
-  deathEffect: {fileID: 0}
+  maxHealth: 100
+  health: 0
+  damagedMat: {fileID: 2100000, guid: 33617448123cfd24c9d7eec27703dfc1, type: 2}
+  deathVFX: {fileID: 0}
+  enemyRend: {fileID: 2545937859754676616}
 --- !u!1001 &3789050519390506252
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -320,6 +323,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e7c7c6a4878d70b48a983449cc7a765a, type: 3}
+--- !u!23 &2545937859754676616 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -7511558181221131132, guid: e7c7c6a4878d70b48a983449cc7a765a, type: 3}
+  m_PrefabInstance: {fileID: 3789050519390506252}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &3683891865649326823 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: e7c7c6a4878d70b48a983449cc7a765a, type: 3}
