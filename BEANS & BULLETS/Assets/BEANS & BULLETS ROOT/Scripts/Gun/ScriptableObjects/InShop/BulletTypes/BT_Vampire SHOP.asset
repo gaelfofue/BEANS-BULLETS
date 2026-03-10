@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0f5ba47d67f0f9e48ba3b3dd3e2e2f8d, type: 3}
-  m_Name: FM_Shotgun SHOP
+  m_Name: BT_Vampire SHOP
   m_EditorClassIdentifier: Assembly-CSharp::ShopItem
-  itemName: 
-  description: 
+  itemName: Vampire
+  description: Blade Reference or sum
   icon: {fileID: 0}
   rarityColor: {r: 1, g: 1, b: 1, a: 1}
   itemType: 0
   fireMode: {fileID: 0}
-  bulletType: {fileID: 0}
+  bulletType: {fileID: 11400000, guid: 398ce2d64169d604e8fa6959621b53bc, type: 2}
   discovered: 1

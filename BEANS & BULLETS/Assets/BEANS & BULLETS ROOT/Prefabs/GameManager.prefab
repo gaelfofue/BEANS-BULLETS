@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 6891858884232794676}
   - component: {fileID: 2667829799658752290}
   - component: {fileID: 3293098612053693360}
+  - component: {fileID: 7569146067863929764}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -165,3 +166,23 @@ MonoBehaviour:
   colorDanger: {r: 1, g: 0, b: 0.251, a: 1}
   blinkSpeed: 4
   roomsPerCycle: 3
+--- !u!114 &7569146067863929764
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5845731133022221652}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04898f58610546248b75137a9cfb0491, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShopManager
+  allItems:
+  - {fileID: 11400000, guid: f4a3f70d1b54b7d40a2edafc0f10686e, type: 2}
+  - {fileID: 11400000, guid: cd1ce74fe2b78594d81287a00e90c4ec, type: 2}
+  - {fileID: 11400000, guid: 8a4b13c0fcb5a254eb60a7dc33993b71, type: 2}
+  - {fileID: 11400000, guid: d0bcbeb31377c3b4c933844e4f95cf58, type: 2}
+  - {fileID: 11400000, guid: e86d5d488ef89c74ba78ff34d970e1db, type: 2}
+  - {fileID: 11400000, guid: 197530f8268cb0c4eae2892dff60dbc0, type: 2}
+  itemsToShow: 3

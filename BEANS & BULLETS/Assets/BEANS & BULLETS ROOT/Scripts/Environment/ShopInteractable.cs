@@ -3,7 +3,7 @@ using UnityEngine;
 public class ShopInteractable : MonoBehaviour
 {
     [Header("Config")]
-    [SerializeField] private float interactRange = 4f;
+    [SerializeField] private float activateRange = 6f;
     [SerializeField] private ShopUI shopUI;
 
     private RoomPiece parentRoom;
@@ -12,11 +12,10 @@ public class ShopInteractable : MonoBehaviour
 
     void Start()
     {
-        // Buscar room padre
+        // Buscar room
         parentRoom = GetComponentInParent<RoomPiece>();
         if (parentRoom == null)
         {
-            // Buscar en toda la escena
             RoomPiece[] rooms = FindObjectsByType<RoomPiece>(FindObjectsSortMode.None);
             foreach (var room in rooms)
             {
@@ -28,11 +27,13 @@ public class ShopInteractable : MonoBehaviour
             }
         }
 
-        // Registrar room en el ShopManager
         if (ShopManager.Instance != null && parentRoom != null)
             ShopManager.Instance.SetCurrentShopRoom(parentRoom);
 
-        // Buscar player
+        // Buscar ShopUI si no asignada
+        if (shopUI == null)
+            shopUI = GetComponentInChildren<ShopUI>();
+
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
             player = playerObj.transform;
@@ -44,11 +45,8 @@ public class ShopInteractable : MonoBehaviour
         if (player == null) return;
 
         float dist = Vector3.Distance(transform.position, player.position);
-
-        if (dist <= interactRange)
-        {
+        if (dist <= activateRange)
             OpenShop();
-        }
     }
 
     void OpenShop()
@@ -57,29 +55,21 @@ public class ShopInteractable : MonoBehaviour
 
         if (ShopManager.Instance == null)
         {
-            Debug.LogError("[SHOP] No ShopManager in scene!");
+            Debug.LogError("[SHOP] No ShopManager!");
             return;
         }
 
-        // Generar ofertas
         ShopItem[] offerings = ShopManager.Instance.GenerateOfferings();
 
-        // Abrir UI
         if (shopUI != null)
-        {
             shopUI.Open(offerings);
-        }
-        else
-        {
-            Debug.LogError("[SHOP] No ShopUI assigned!");
-        }
 
-        Debug.Log("[SHOP] Shop opened!");
+        Debug.Log("[SHOP] Arcade screen activated!");
     }
 
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, interactRange);
+        Gizmos.DrawWireSphere(transform.position, activateRange);
     }
 }

@@ -4,155 +4,75 @@ using TMPro;
 
 public class ShopUI : MonoBehaviour
 {
-    [Header("Panel")]
-    [SerializeField] private GameObject shopPanel;
+    [Header("Slots")]
+    [SerializeField] private ShopSlotUI[] slots;
 
-    [Header("Slot 1")]
-    [SerializeField] private Button slot1Button;
-    [SerializeField] private Image slot1Icon;
-    [SerializeField] private TextMeshProUGUI slot1Name;
-    [SerializeField] private TextMeshProUGUI slot1Desc;
-    [SerializeField] private Image slot1TypeBadge;
+    [Header("Screen Feedback")]
+    [SerializeField] private Image screenBackground;
+    [SerializeField] private Color activeColor = new Color(0.05f, 0.05f, 0.15f);
+    [SerializeField] private Color purchasedColor = new Color(0.02f, 0.02f, 0.05f);
 
-    [Header("Slot 2")]
-    [SerializeField] private Button slot2Button;
-    [SerializeField] private Image slot2Icon;
-    [SerializeField] private TextMeshProUGUI slot2Name;
-    [SerializeField] private TextMeshProUGUI slot2Desc;
-    [SerializeField] private Image slot2TypeBadge;
-
-    [Header("Slot 3")]
-    [SerializeField] private Button slot3Button;
-    [SerializeField] private Image slot3Icon;
-    [SerializeField] private TextMeshProUGUI slot3Name;
-    [SerializeField] private TextMeshProUGUI slot3Desc;
-    [SerializeField] private Image slot3TypeBadge;
-
-    [Header("Type Colors")]
-    [SerializeField] private Color fireColor = new Color(1f, 0.4f, 0.2f);
-    [SerializeField] private Color bulletColor = new Color(0.2f, 0.8f, 1f);
-    [SerializeField] private Color modifierColor = new Color(0.4f, 1f, 0.4f);
-
-    // Cache
-    private Button[] slotButtons;
-    private Image[] slotIcons;
-    private TextMeshProUGUI[] slotNames;
-    private TextMeshProUGUI[] slotDescs;
-    private Image[] slotBadges;
-
-    void Awake()
-    {
-        slotButtons = new Button[] { slot1Button, slot2Button, slot3Button };
-        slotIcons = new Image[] { slot1Icon, slot2Icon, slot3Icon };
-        slotNames = new TextMeshProUGUI[] { slot1Name, slot2Name, slot3Name };
-        slotDescs = new TextMeshProUGUI[] { slot1Desc, slot2Desc, slot3Desc };
-        slotBadges = new Image[] { slot1TypeBadge, slot2TypeBadge, slot3TypeBadge };
-
-        // Conectar botones
-        slot1Button.onClick.AddListener(() => OnSlotClicked(0));
-        slot2Button.onClick.AddListener(() => OnSlotClicked(1));
-        slot3Button.onClick.AddListener(() => OnSlotClicked(2));
-
-        // Ocultar al inicio
-        shopPanel.SetActive(false);
-    }
+    private bool purchased = false;
 
     void Start()
     {
-        // Escuchar evento de compra
+        // Escuchar compras
         if (ShopManager.Instance != null)
-            ShopManager.Instance.OnPurchaseComplete += OnPurchaseComplete;
+            ShopManager.Instance.OnPurchaseComplete += OnPurchased;
+
+        // Apagar pantalla al inicio
+        SetScreenActive(false);
     }
 
     void OnDestroy()
     {
         if (ShopManager.Instance != null)
-            ShopManager.Instance.OnPurchaseComplete -= OnPurchaseComplete;
+            ShopManager.Instance.OnPurchaseComplete -= OnPurchased;
     }
 
-    /// <summary>
-    /// Abre la tienda y muestra las mejoras.
-    /// </summary>
     public void Open(ShopItem[] offerings)
     {
-        shopPanel.SetActive(true);
+        purchased = false;
+        SetScreenActive(true);
 
-        // Mostrar cursor para hacer click
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        if (screenBackground != null)
+            screenBackground.color = activeColor;
 
-        for (int i = 0; i < slotButtons.Length; i++)
+        for (int i = 0; i < slots.Length; i++)
         {
             if (i < offerings.Length && offerings[i] != null)
             {
-                ShopItem item = offerings[i];
-
-                slotButtons[i].gameObject.SetActive(true);
-                slotButtons[i].interactable = true;
-
-                // Icono
-                if (slotIcons[i] != null)
-                {
-                    slotIcons[i].sprite = item.icon;
-                    slotIcons[i].color = item.icon != null ? Color.white : new Color(1, 1, 1, 0.2f);
-                }
-
-                // Nombre
-                if (slotNames[i] != null)
-                    slotNames[i].text = item.itemName;
-
-                // Descripción
-                if (slotDescs[i] != null)
-                    slotDescs[i].text = item.description;
-
-                // Color del tipo
-                if (slotBadges[i] != null)
-                    slotBadges[i].color = GetTypeColor(item.itemType);
+                slots[i].Setup(offerings[i], i);
+                slots[i].gameObject.SetActive(true);
             }
             else
             {
-                slotButtons[i].gameObject.SetActive(false);
+                slots[i].gameObject.SetActive(false);
             }
         }
     }
 
-    public void Close()
+    private void OnPurchased()
     {
-        shopPanel.SetActive(false);
+        purchased = true;
 
-        // Volver a lockear cursor
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        // Desactivar todos los slots
+        foreach (var slot in slots)
+            slot.SetInteractable(false);
+
+        // Cambiar color de pantalla
+        if (screenBackground != null)
+            screenBackground.color = purchasedColor;
     }
 
-    private void OnSlotClicked(int index)
+    private void SetScreenActive(bool active)
     {
-        if (ShopManager.Instance == null) return;
-
-        bool success = ShopManager.Instance.TryPurchase(index);
-
-        if (success)
-        {
-            // Feedback visual: desactivar todos los botones
-            foreach (var btn in slotButtons)
-                btn.interactable = false;
-        }
+        foreach (var slot in slots)
+            slot.gameObject.SetActive(active);
     }
 
-    private void OnPurchaseComplete()
+    public bool HasPurchased()
     {
-        // Cerrar la UI después de un momento
-        Invoke(nameof(Close), 0.5f);
-    }
-
-    private Color GetTypeColor(ShopItemType type)
-    {
-        switch (type)
-        {
-            case ShopItemType.FireMode: return fireColor;
-            case ShopItemType.BulletType: return bulletColor;
-            case ShopItemType.PlayerModifier: return modifierColor;
-            default: return Color.white;
-        }
+        return purchased;
     }
 }
