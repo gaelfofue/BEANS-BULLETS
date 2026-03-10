@@ -63,7 +63,7 @@ public class RoomPiece : MonoBehaviour
             if (entryDoor != null)
                 entryDoor.SetState(Door.DoorState.Locked);
             if (exitDoor != null)
-                exitDoor.SetState(Door.DoorState.Closed);
+                exitDoor.SetState(Door.DoorState.Locked);
 
             if (GameTimer.Instance != null)
                 GameTimer.Instance.SetPaused(true);
@@ -78,16 +78,15 @@ public class RoomPiece : MonoBehaviour
 
         for (int i = 0; i < enemyCount; i++)
         {
-            Transform sp = spawnPoints[i %  spawnPoints.Length];
+            Transform sp = spawnPoints[i % spawnPoints.Length];
             GameObject go = Instantiate(enemyPrefab, sp.position, sp.rotation);
 
-            // GetComponentInChildren busca en el objeto y en todos sus hijos
             EnemyHealth health = go.GetComponentInChildren<EnemyHealth>();
             if (health != null)
             {
                 activeEnemies.Add(health);
                 health.SetRoom(this);
-                Debug.Log($"[ROOM] Enemy spawned and registered, Total: {activeEnemies.Count}");
+                Debug.Log($"[ROOM] Enemy spawned and registered. Total: {activeEnemies.Count}");
             }
             else
             {
@@ -115,8 +114,27 @@ public class RoomPiece : MonoBehaviour
         if (exitDoor != null)
             exitDoor.SetState(Door.DoorState.Closed);
 
-        // Avisar al LevelManager
         LevelManager.Instance.OnRoomCompleted();
+    }
+
+    /// <summary>
+    /// Llamado por el objeto interactuable de la tienda.
+    /// Desbloquea la puerta de salida.
+    /// </summary>
+    public void OnShopInteractionComplete()
+    {
+        if (pieceType != PieceType.Shop) return;
+        if (completed) return;
+
+        completed = true;
+
+        if (exitDoor != null)
+            exitDoor.SetState(Door.DoorState.Closed);
+
+        if (LevelManager.Instance != null)
+            LevelManager.Instance.OnShopCompleted();
+
+        Debug.Log("[SHOP] Interaction complete. Exit door unlocked.");
     }
 
     public void PrepareForUnload()

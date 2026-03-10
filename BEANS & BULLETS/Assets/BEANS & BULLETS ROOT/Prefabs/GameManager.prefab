@@ -10,6 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 7493609536916526126}
   - component: {fileID: 1565214420993627215}
+  - component: {fileID: 6891858884232794676}
+  - component: {fileID: 2667829799658752290}
+  - component: {fileID: 3293098612053693360}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -95,3 +98,70 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+--- !u!114 &6891858884232794676
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5845731133022221652}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab08ac8c2c18637428c187329f142997, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LevelManager
+  combatScenes:
+  - TestRoomA
+  corridorScenes:
+  - TestCorridor
+  shopScenes:
+  - Shop
+  spawnRoom: {fileID: 0}
+  shopEveryXRooms: 3
+  unloadDelay: 1.2
+--- !u!114 &2667829799658752290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5845731133022221652}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7244a4e4ee524ab409c28723892e0064, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameOverManager
+  mainSceneName: SCN_MainScene
+  bsodOverlay: {fileID: 0}
+  bsodText: {fileID: 0}
+  slowMoDuration: 1.5
+  slowMoScale: 0.2
+  fadeDuration: 0.8
+--- !u!114 &3293098612053693360
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5845731133022221652}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14d32c3176519f04da36af4153ba2d2c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HUDController
+  runTimerText: {fileID: 0}
+  combatTimerPanel: {fileID: 0}
+  combatTimerFill: {fileID: 0}
+  combatTimerImage: {fileID: 0}
+  scoreText: {fileID: 0}
+  roomProgressText: {fileID: 0}
+  roundText: {fileID: 0}
+  ammoText: {fileID: 0}
+  slotIcon1: {fileID: 0}
+  slotIcon2: {fileID: 0}
+  slotIcon3: {fileID: 0}
+  colorSafe: {r: 0, g: 1, b: 0.255, a: 1}
+  colorWarning: {r: 1, g: 0.843, b: 0, a: 1}
+  colorDanger: {r: 1, g: 0, b: 0.251, a: 1}
+  blinkSpeed: 4
+  roomsPerCycle: 3

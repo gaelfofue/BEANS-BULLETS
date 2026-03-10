@@ -377,6 +377,23 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 2113821341}
   m_SourcePrefab: {fileID: 100100000, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
+--- !u!1 &1300665551 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6767104622091654522, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
+  m_PrefabInstance: {fileID: 8227654004459541976}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1300665557
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1300665551}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e0fd770c4b9ea04184359995f7e54e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShootLineRenderer
 --- !u!114 &1379522091 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6763040789658100623, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
@@ -687,6 +704,26 @@ Mesh:
       - serializedVersion: 1
         m_IndexStart: 0
         m_IndexCount: 0
+--- !u!1 &1762983912 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4036095114019597210, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
+  m_PrefabInstance: {fileID: 8227654004459541976}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1762983922
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1762983912}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ed31af7749d4b942949690ef7052502, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShootDebugLine
+  lineDuration: 0.5
+  hitColor: {r: 1, g: 0, b: 0, a: 1}
+  missColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
 --- !u!114 &1870365984 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 896966150362667870, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
@@ -1531,9 +1568,11 @@ MonoBehaviour:
   - TestRoomA
   corridorScenes:
   - TestCorridor
-  shopScenes: []
+  shopScenes:
+  - Shop
   spawnRoom: {fileID: 2112867595}
   shopEveryXRooms: 3
+  unloadDelay: 1.2
 --- !u!114 &2113821340
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2061,7 +2100,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4036095114019597210, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1762983922}
+    - targetCorrespondingSourceObject: {fileID: 6767104622091654522, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1300665557}
   m_SourcePrefab: {fileID: 100100000, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

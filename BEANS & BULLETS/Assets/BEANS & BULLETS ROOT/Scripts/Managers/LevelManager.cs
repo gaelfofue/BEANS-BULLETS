@@ -18,6 +18,9 @@ public class LevelManager : MonoBehaviour
     [Header("SHOP FREQUENCY")]
     [SerializeField] private int shopEveryXRooms = 3;
 
+    [Header("TIMING")]
+    [SerializeField] private float unloadDelay = 1.2f; // Tiempo para que las puertas se cierren
+
     // Todas las piezas en orden
     private List<Piece> pieces = new List<Piece>();
     private int playerIndex = -1;
@@ -29,6 +32,7 @@ public class LevelManager : MonoBehaviour
     private bool isLoading;
     private bool nextIsRoom = true;
     private int roomsCompleted;
+    private int combatRoomsSinceLastShop = 0; // Contador SOLO de salas combat
     private string lastRoom = "";
     private string lastCorridor = "";
 
@@ -57,7 +61,6 @@ public class LevelManager : MonoBehaviour
 
     private IEnumerator InitialLoad()
     {
-        // Registrar SpawnRoom como pieza 0
         if (spawnRoom != null)
         {
             pieces.Add(new Piece
@@ -78,7 +81,7 @@ public class LevelManager : MonoBehaviour
         yield return StartCoroutine(LoadOnePiece());
 
         initialLoadDone = true;
-        Debug.Log($"INITIAL LOAD COMPLETE Piezas: {pieces.Count}");
+        Debug.Log($"=== INITIAL LOAD COMPLETE === Piezas: {pieces.Count}");
     }
 
     // ============================
@@ -87,7 +90,6 @@ public class LevelManager : MonoBehaviour
 
     public void OnPlayerEnteredPiece(RoomPiece piece)
     {
-        // Encontrar índice
         int newIndex = -1;
         for (int i = 0; i < pieces.Count; i++)
         {
@@ -100,17 +102,12 @@ public class LevelManager : MonoBehaviour
 
         if (newIndex < 0 || newIndex == playerIndex) return;
 
-        int previousIndex = playerIndex;
         playerIndex = newIndex;
 
-        Debug.Log($"PLAYER MOVED Pieza {playerIndex}: {piece.gameObject.name} ({piece.GetPieceType()})");
+        Debug.Log($"=== PLAYER MOVED === Pieza {playerIndex}: {piece.gameObject.name} ({piece.GetPieceType()})");
 
-        // Activar la pieza actual
         piece.Activate();
 
-        // Si entramos a una SALA (combat/shop), podemos:
-        // 1. Descargar todo lo anterior (puerta cerrada oculta)
-        // 2. Rellenar el buffer adelante
         if (piece.GetPieceType() == RoomPiece.PieceType.Combat ||
             piece.GetPieceType() == RoomPiece.PieceType.Shop)
         {
@@ -122,7 +119,15 @@ public class LevelManager : MonoBehaviour
     {
         roomsCompleted++;
         Debug.Log($"=== ROOM COMPLETED === Total: {roomsCompleted}");
-        // No cargamos nada aquí, el buffer ya está lleno
+    }
+
+    /// <summary>
+    /// Llamado por la tienda cuando el player termina de comprar o decide irse.
+    /// </summary>
+    public void OnShopCompleted()
+    {
+        Debug.Log("=== SHOP COMPLETED ===");
+        // No incrementamos roomsCompleted porque la tienda no es combate
     }
 
     // ============================
@@ -131,8 +136,8 @@ public class LevelManager : MonoBehaviour
 
     private IEnumerator OnEnteredRoom()
     {
-        // Esperar a que la puerta se cierre visualmente
-        yield return new WaitForSeconds(0.6f);
+        // Esperar a que las puertas se cierren visualmente
+        yield return new WaitForSeconds(unloadDelay);
 
         // Descargar todo lo anterior al player
         yield return StartCoroutine(UnloadBehindPlayer());
@@ -147,7 +152,7 @@ public class LevelManager : MonoBehaviour
 
     private IEnumerator FillBuffer()
     {
-        int target = 2; // Pasillo + Sala siguiente
+        int target = 2;
 
         while (PiecesAhead() < target)
         {
@@ -168,7 +173,6 @@ public class LevelManager : MonoBehaviour
 
     private IEnumerator LoadOnePiece()
     {
-        // Bloquear doble carga
         while (isLoading)
             yield return null;
 
@@ -188,7 +192,6 @@ public class LevelManager : MonoBehaviour
 
         yield return null;
 
-        // Encontrar la escena recién cargada (por handle, no por nombre)
         Scene newScene = FindNewScene(sceneName);
 
         if (!newScene.IsValid())
@@ -199,6 +202,14 @@ public class LevelManager : MonoBehaviour
         }
 
         GameObject[] roots = newScene.GetRootGameObjects();
+
+        // Eliminar AudioListeners duplicados
+        foreach (GameObject root in roots)
+        {
+            var listeners = root.GetComponentsInChildren<AudioListener>();
+            foreach (var l in listeners)
+                Destroy(l);
+        }
 
         RoomPiece piece = null;
         foreach (GameObject root in roots)
@@ -233,7 +244,7 @@ public class LevelManager : MonoBehaviour
         // Actualizar conexión
         nextSpawnPos = piece.GetExitPoint().position;
 
-        // Inicializar (abre puerta de entrada)
+        // Inicializar
         piece.Initialize();
 
         // Registrar
@@ -287,11 +298,9 @@ public class LevelManager : MonoBehaviour
             Piece p = pieces[i];
             if (p.unloaded) continue;
 
-            // Preparar visualmente
             if (p.roomPiece != null)
                 p.roomPiece.PrepareForUnload();
 
-            // Descargar escena aditiva
             if (p.isSceneLoaded && p.sceneHandle.IsValid() && p.sceneHandle.isLoaded)
             {
                 Debug.Log($"Descargando pieza {i}: {p.sceneHandle.name}");
@@ -316,9 +325,17 @@ public class LevelManager : MonoBehaviour
 
     private string PickNextRoom()
     {
-        if (shopScenes.Length > 0 && roomsCompleted > 0 && roomsCompleted % shopEveryXRooms == 0)
+        // ¿Toca tienda?
+        if (shopScenes.Length > 0 && combatRoomsSinceLastShop >= shopEveryXRooms)
+        {
+            combatRoomsSinceLastShop = 0;
+            Debug.Log($"[LEVEL] Picking SHOP (after {shopEveryXRooms} combat rooms)");
             return shopScenes[Random.Range(0, shopScenes.Length)];
+        }
 
+        // Es combat, incrementar aquí
+        combatRoomsSinceLastShop++;
+        Debug.Log($"[LEVEL] Picking COMBAT (sinceShop: {combatRoomsSinceLastShop}/{shopEveryXRooms})");
         return PickRandom(combatScenes, ref lastRoom);
     }
 

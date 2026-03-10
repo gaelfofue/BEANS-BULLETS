@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class GunSystem : MonoBehaviour
@@ -194,8 +194,12 @@ public class GunSystem : MonoBehaviour
 
             if (Physics.Raycast(ray, out hit, stats.range, hitMask))
             {
-                // DEBUG � rayo rojo si pega
                 Debug.DrawLine(cam.transform.position, hit.point, Color.red, 1f);
+
+                // ★ LÍNEA VISIBLE IN-GAME
+                if (ShootLineRenderer.Instance != null)
+                    ShootLineRenderer.Instance.AddLine(cam.transform.position, hit.point, Color.red, 0.3f);
+
                 Debug.Log($"SHOTGUN HIT: {hit.collider.gameObject.name} Layer:{hit.collider.gameObject.layer}");
 
                 if (bulletType != null)
@@ -211,8 +215,11 @@ public class GunSystem : MonoBehaviour
             }
             else
             {
-                // DEBUG � rayo amarillo si no pega
                 Debug.DrawRay(cam.transform.position, direction * stats.range, Color.yellow, 1f);
+
+                // ★ LÍNEA VISIBLE IN-GAME
+                if (ShootLineRenderer.Instance != null)
+                    ShootLineRenderer.Instance.AddLine(cam.transform.position, cam.transform.position + direction * stats.range, Color.yellow, 0.3f);
             }
         }
 
@@ -232,7 +239,6 @@ public class GunSystem : MonoBehaviour
         currentAmmo--;
         timeSinceLastShot = 0f;
 
-        // Efectos
         if (muzzleFlash != null)
             muzzleFlash.Play();
 
@@ -244,7 +250,6 @@ public class GunSystem : MonoBehaviour
         if (gunRecoil != null)
             gunRecoil.DoRecoil();
 
-        // Raycast
         Vector3 direction = cam.transform.forward;
 
         float spread = fireMode.GetSpreadAngle();
@@ -260,8 +265,12 @@ public class GunSystem : MonoBehaviour
 
         if (Physics.Raycast(ray, out hit, stats.range, hitMask))
         {
-            // DEBUG � rayo rojo si pega
             Debug.DrawLine(cam.transform.position, hit.point, Color.red, 1f);
+
+            // ★ LÍNEA VISIBLE IN-GAME
+            if (ShootLineRenderer.Instance != null)
+                ShootLineRenderer.Instance.AddLine(cam.transform.position, hit.point, Color.red, 0.3f);
+
             Debug.Log($"HIT: {hit.collider.gameObject.name} Layer:{hit.collider.gameObject.layer}");
 
             if (bulletType != null)
@@ -276,9 +285,13 @@ public class GunSystem : MonoBehaviour
         }
         else
         {
-            // DEBUG � rayo amarillo si no pega
             Debug.DrawRay(cam.transform.position, direction * stats.range, Color.yellow, 1f);
-            Debug.Log("MISS � no hit");
+
+            // ★ LÍNEA VISIBLE IN-GAME
+            if (ShootLineRenderer.Instance != null)
+                ShootLineRenderer.Instance.AddLine(cam.transform.position, cam.transform.position + direction * stats.range, Color.yellow, 0.3f);
+
+            Debug.Log("MISS — no hit");
         }
 
         UpdateHUD();
