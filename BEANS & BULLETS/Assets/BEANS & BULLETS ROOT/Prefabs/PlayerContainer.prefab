@@ -702,7 +702,7 @@ RectTransform:
   m_AnchorMin: {x: 0.385, y: 0.575}
   m_AnchorMax: {x: 0.385, y: 0.575}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 20, y: 20}
+  m_SizeDelta: {x: 70, y: 70}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1377389663369958359
 CanvasRenderer:
@@ -725,14 +725,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0, g: 1, b: 0.021962404, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: e4b8da0a8469dc146a6c4b4810cfec18, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9a52d3e14bfaf44438659d971e0a8b64, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -3697,6 +3697,7 @@ GameObject:
   - component: {fileID: 5674870092907062001}
   - component: {fileID: 7664266477394744404}
   - component: {fileID: 6199316270643307607}
+  - component: {fileID: 6398041172535307694}
   m_Layer: 3
   m_Name: MainCamera
   m_TagString: MainCamera
@@ -3759,7 +3760,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 439
+    m_Bits: 524727
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -3845,6 +3846,18 @@ MonoBehaviour:
   enableHeadBob: 1
   bobFrequency: 8
   bobAmplitude: 0.2
+--- !u!114 &6398041172535307694
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6767104622091654522}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e0fd770c4b9ea04184359995f7e54e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShootLineRenderer
 --- !u!1 &6846332427943317932
 GameObject:
   m_ObjectHideFlags: 0
