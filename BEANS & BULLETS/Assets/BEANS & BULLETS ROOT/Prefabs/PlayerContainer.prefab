@@ -4024,7 +4024,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6248809168652289912}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: PlayerContainer
   m_TagString: Player
   m_Icon: {fileID: 0}
