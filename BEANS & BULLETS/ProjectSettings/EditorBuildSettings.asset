@@ -6,13 +6,13 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/BEANS & BULLETS ROOT/Scenes/SCN_MainScene.unity
+    path: Assets/BEANS & BULLETS ROOT/Scenes/SCN_Play.unity
     guid: 7fdbbbe08b9d03e4d85709ec2d93d1e2
   - enabled: 1
     path: Assets/BEANS & BULLETS ROOT/Scenes/TestCorridor.unity
     guid: 3e180f3cd1fbd6842a371f81f25f514f
   - enabled: 1
-    path: Assets/BEANS & BULLETS ROOT/Scenes/Room1.unity
+    path: Assets/BEANS & BULLETS ROOT/Scenes/SCN_1.unity
     guid: b976be049e352964dbf807829b007ad9
   - enabled: 1
     path: Assets/BEANS & BULLETS ROOT/Scenes/TestRoomA.unity
@@ -21,7 +21,7 @@ EditorBuildSettings:
     path: Assets/BEANS & BULLETS ROOT/Scenes/TestRoomB.unity
     guid: 822b3f25ddfeb1c4aae95e23d37ed8b9
   - enabled: 1
-    path: Assets/BEANS & BULLETS ROOT/Scenes/Shop.unity
+    path: Assets/BEANS & BULLETS ROOT/Scenes/SCN_SHOP.unity
     guid: 651d355b41e299141932d0885f961020
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: 94a9b3726f645464c90924fbf1f18d01, type: 2}
