@@ -17,6 +17,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/BEANS & BULLETS ROOT/Scenes/SCN_1.unity
     guid: b976be049e352964dbf807829b007ad9
+  - enabled: 1
+    path: Assets/BEANS & BULLETS ROOT/Scenes/SCN_2.unity
+    guid: f97ace8a6a88bd34fb81640844ca0701
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: 94a9b3726f645464c90924fbf1f18d01, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 6cdeb9efd3482ba4bb0fb9d9f127b150, type: 3}

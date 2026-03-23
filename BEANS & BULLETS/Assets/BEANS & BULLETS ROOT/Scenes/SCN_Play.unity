@@ -438,7 +438,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6891858884232794676, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
       propertyPath: combatScenes.Array.size
-      value: 1
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6891858884232794676, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
       propertyPath: 'shopScenes.Array.data[0]'
@@ -454,7 +454,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6891858884232794676, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
       propertyPath: 'combatScenes.Array.data[1]'
-      value: Room1
+      value: SCN_2
       objectReference: {fileID: 0}
     - target: {fileID: 6891858884232794676, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
       propertyPath: 'corridorScenes.Array.data[0]'
