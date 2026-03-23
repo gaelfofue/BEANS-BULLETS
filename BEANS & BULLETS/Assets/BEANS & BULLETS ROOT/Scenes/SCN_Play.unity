@@ -445,12 +445,20 @@ PrefabInstance:
       value: SCN_SHOP
       objectReference: {fileID: 0}
     - target: {fileID: 6891858884232794676, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
+      propertyPath: corridorScenes.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6891858884232794676, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
       propertyPath: 'combatScenes.Array.data[0]'
       value: SCN_1
       objectReference: {fileID: 0}
     - target: {fileID: 6891858884232794676, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
       propertyPath: 'combatScenes.Array.data[1]'
       value: Room1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6891858884232794676, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
+      propertyPath: 'corridorScenes.Array.data[0]'
+      value: SCN_Corridor1
       objectReference: {fileID: 0}
     - target: {fileID: 7493609536916526126, guid: 75edcdee723bb694eb3f0b08f9f76ada, type: 3}
       propertyPath: m_LocalPosition.x
