@@ -302,7 +302,7 @@ MonoBehaviour:
     m_Bits: 256
   walkPointRange: 8
   timeBetweenAttacks: 1
-  projectile: {fileID: 0}
+  projectile: {fileID: 449042133858933725, guid: cf1c13514a2a90941b220a1f691e8642, type: 3}
   shootPoint: {fileID: 3559822146046255329}
   shootSpeedY: 0
   shootSpeedZ: 10

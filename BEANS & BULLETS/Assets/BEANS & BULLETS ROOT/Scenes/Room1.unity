@@ -179,7 +179,7 @@ MonoBehaviour:
   - {fileID: 457598006}
   - {fileID: 457598006}
   enemyPrefab: {fileID: 1530939797626231895, guid: e7847f5e39eed05478bcb8fa51aba6a7, type: 3}
-  enemyCount: 1
+  enemyCount: 5
 --- !u!1 &290406040
 GameObject:
   m_ObjectHideFlags: 0
