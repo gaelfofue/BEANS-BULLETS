@@ -15,7 +15,7 @@ public class GunSystem : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private GunRecoil gunRecoil;
-    [SerializeField] private ParticleSystem muzzleFlash;
+    [SerializeField] private ShootVFXController vfx;
 
     [Header("Audio")]
     [SerializeField] private AudioSource audioSource;
@@ -169,9 +169,6 @@ public class GunSystem : MonoBehaviour
         currentAmmo--;
         timeSinceLastShot = 0f;
 
-        if (muzzleFlash != null)
-            muzzleFlash.Play();
-
         PlaySound(fireSound);
 
         if (crosshair != null)
@@ -179,6 +176,10 @@ public class GunSystem : MonoBehaviour
 
         if (gunRecoil != null)
             gunRecoil.DoRecoil();
+
+        // Muzzle VFX una sola vez
+        if (vfx != null)
+            vfx.PlayMuzzleOnly();
 
         bool hitAnyEnemy = false;
 
@@ -194,13 +195,9 @@ public class GunSystem : MonoBehaviour
 
             if (Physics.Raycast(ray, out hit, stats.range, hitMask))
             {
-                Debug.DrawLine(cam.transform.position, hit.point, Color.red, 1f);
-
-                // ★ LÍNEA VISIBLE IN-GAME
-                if (ShootLineRenderer.Instance != null)
-                    ShootLineRenderer.Instance.AddLine(cam.transform.position, hit.point, Color.red, 0.3f);
-
-                Debug.Log($"SHOTGUN HIT: {hit.collider.gameObject.name} Layer:{hit.collider.gameObject.layer}");
+                // Trail + Impact por cada pellet
+                if (vfx != null)
+                    vfx.PlayTrailAndImpact(hit.point, true, hit.normal);
 
                 if (bulletType != null)
                 {
@@ -212,14 +209,6 @@ public class GunSystem : MonoBehaviour
                 EnemyHealth enemy = hit.collider.GetComponentInParent<EnemyHealth>();
                 if (enemy != null)
                     hitAnyEnemy = true;
-            }
-            else
-            {
-                Debug.DrawRay(cam.transform.position, direction * stats.range, Color.yellow, 1f);
-
-                // ★ LÍNEA VISIBLE IN-GAME
-                if (ShootLineRenderer.Instance != null)
-                    ShootLineRenderer.Instance.AddLine(cam.transform.position, cam.transform.position + direction * stats.range, Color.yellow, 0.3f);
             }
         }
 
@@ -239,19 +228,19 @@ public class GunSystem : MonoBehaviour
         currentAmmo--;
         timeSinceLastShot = 0f;
 
-        if (muzzleFlash != null)
-            muzzleFlash.Play();
-
+        // Audio
         PlaySound(fireSound);
 
+        // Crosshair
         if (crosshair != null)
             crosshair.OnShoot();
 
+        // Recoil
         if (gunRecoil != null)
             gunRecoil.DoRecoil();
 
+        // Dirección
         Vector3 direction = cam.transform.forward;
-
         float spread = fireMode.GetSpreadAngle();
         if (spread > 0f)
         {
@@ -260,18 +249,15 @@ public class GunSystem : MonoBehaviour
             direction.Normalize();
         }
 
+        // Raycast
         Ray ray = new Ray(cam.transform.position, direction);
         RaycastHit hit;
 
         if (Physics.Raycast(ray, out hit, stats.range, hitMask))
         {
-            Debug.DrawLine(cam.transform.position, hit.point, Color.red, 1f);
-
-            // ★ LÍNEA VISIBLE IN-GAME
-            if (ShootLineRenderer.Instance != null)
-                ShootLineRenderer.Instance.AddLine(cam.transform.position, hit.point, Color.red, 0.3f);
-
-            Debug.Log($"HIT: {hit.collider.gameObject.name} Layer:{hit.collider.gameObject.layer}");
+            // VFX con impacto
+            if (vfx != null)
+                vfx.PlayShootVFX(hit.point, true, hit.normal);
 
             if (bulletType != null)
             {
@@ -285,13 +271,9 @@ public class GunSystem : MonoBehaviour
         }
         else
         {
-            Debug.DrawRay(cam.transform.position, direction * stats.range, Color.yellow, 1f);
-
-            // ★ LÍNEA VISIBLE IN-GAME
-            if (ShootLineRenderer.Instance != null)
-                ShootLineRenderer.Instance.AddLine(cam.transform.position, cam.transform.position + direction * stats.range, Color.yellow, 0.3f);
-
-            Debug.Log("MISS — no hit");
+            // VFX sin impacto
+            if (vfx != null)
+                vfx.PlayShootVFX(Vector3.zero, false, Vector3.zero);
         }
 
         UpdateHUD();
