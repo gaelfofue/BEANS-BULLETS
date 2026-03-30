@@ -16,33 +16,16 @@ public class ShootVFXController : MonoBehaviour
     [Header("Sparks")]
     [SerializeField] private ParticleSystem muzzleSparks;
 
-    [Header("Hitscan Trail")]
-    [SerializeField] private LineRenderer trailLine;
-    [SerializeField] private float trailDuration = 0.08f;
-    [SerializeField] private float trailWidth = 0.02f;
-
     [Header("Impact Prefab")]
     [SerializeField] private GameObject impactPrefab;
     [SerializeField] private float impactLifetime = 0.5f;
 
-    void Start()
-    {
-        // Configurar trail
-        if (trailLine != null)
-        {
-            trailLine.positionCount = 2;
-            trailLine.startWidth = trailWidth;
-            trailLine.endWidth = trailWidth * 0.5f;
-            trailLine.enabled = false;
-        }
-    }
-
     /// <summary>
-    /// Llamar desde GunSystem después de cada disparo.
+    /// Disparo normal: muzzle + trail + impacto.
     /// </summary>
     public void PlayShootVFX(Vector3 hitPoint, bool didHit, Vector3 hitNormal)
     {
-        // 1. Muzzle Flash Star (rotación random)
+        // Muzzle flash
         if (muzzleFlashStar != null)
         {
             var main = muzzleFlashStar.main;
@@ -50,30 +33,28 @@ public class ShootVFXController : MonoBehaviour
             muzzleFlashStar.Play();
         }
 
-        // 2. Sparks
+        // Sparks
         if (muzzleSparks != null)
             muzzleSparks.Play();
 
-        // 3. Shock Ring (con delay)
+        // Shock ring
         if (shockRing != null)
             StartCoroutine(PlayDelayed(shockRing, ringDelay));
 
-        // 4. Trail
-        if (trailLine != null)
+        // Trail (sistema independiente)
+        if (HitscanTrail.Instance != null)
         {
             Vector3 endPoint = didHit ? hitPoint : muzzlePoint.position + muzzlePoint.forward * 100f;
-            StartCoroutine(ShowTrail(muzzlePoint.position, endPoint));
+            HitscanTrail.Instance.ShowTrail(muzzlePoint.position, endPoint);
         }
 
-        // 5. Impact VFX
+        // Impact
         if (didHit && impactPrefab != null)
-        {
             SpawnImpact(hitPoint, hitNormal);
-        }
     }
 
     /// <summary>
-    /// Versión para shotgun: múltiples impactos, un solo muzzle.
+    /// Shotgun: solo muzzle una vez.
     /// </summary>
     public void PlayMuzzleOnly()
     {
@@ -92,15 +73,12 @@ public class ShootVFXController : MonoBehaviour
     }
 
     /// <summary>
-    /// Para cada pellet de shotgun que impacta.
+    /// Shotgun: trail + impacto por cada pellet.
     /// </summary>
     public void PlayTrailAndImpact(Vector3 hitPoint, bool didHit, Vector3 hitNormal)
     {
-        if (trailLine != null && didHit)
-        {
-            // Para shotgun usamos DrawLine ya que solo hay un LineRenderer
-            Debug.DrawLine(muzzlePoint.position, hitPoint, Color.yellow, 0.08f);
-        }
+        if (didHit && HitscanTrail.Instance != null)
+            HitscanTrail.Instance.ShowTrail(muzzlePoint.position, hitPoint);
 
         if (didHit && impactPrefab != null)
             SpawnImpact(hitPoint, hitNormal);
@@ -110,17 +88,6 @@ public class ShootVFXController : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         ps.Play();
-    }
-
-    private IEnumerator ShowTrail(Vector3 start, Vector3 end)
-    {
-        trailLine.enabled = true;
-        trailLine.SetPosition(0, start);
-        trailLine.SetPosition(1, end);
-
-        yield return new WaitForSeconds(trailDuration);
-
-        trailLine.enabled = false;
     }
 
     private void SpawnImpact(Vector3 position, Vector3 normal)
