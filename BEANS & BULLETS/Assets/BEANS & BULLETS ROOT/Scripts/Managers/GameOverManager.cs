@@ -1,7 +1,8 @@
-using UnityEngine;
-using UnityEngine.SceneManagement;
 using System.Collections;
 using TMPro;
+using UnityEngine;
+using UnityEngine.InputSystem.XR;
+using UnityEngine.SceneManagement;
 
 public class GameOverManager : MonoBehaviour
 {
@@ -15,7 +16,15 @@ public class GameOverManager : MonoBehaviour
     [Header("Timing")]
     [SerializeField] private float slowMoDuration = 1.5f;
     [SerializeField] private float slowMoScale = 0.2f;
-    [SerializeField] private float fadeDuration = 0.5f;
+
+    [Header("Camera Death Animation")]
+    [SerializeField] private Transform cameraHolder;
+    [SerializeField] private float fallDuration = 0.8f;
+    [SerializeField] private float fallAngle = 80f;
+    [SerializeField] private float fallHeight = 1.5f;
+
+    [Header("Player Reference")]
+    [SerializeField] private GameObject player;
 
     private bool gameOverTriggered = false;
     private bool waitingForInput = false;
@@ -28,22 +37,21 @@ public class GameOverManager : MonoBehaviour
 
     private void Update()
     {
-        if (waitingForInput)
+        if (!waitingForInput) return;
+
+        if (Input.anyKeyDown)
         {
-            if (Input.anyKeyDown)
+            if (Input.GetKeyDown(KeyCode.Escape))
             {
-                if (Input.GetKeyDown(KeyCode.Escape))
-                {
 #if UNITY_EDITOR
-                    UnityEditor.EditorApplication.isPlaying = false;
+                UnityEditor.EditorApplication.isPlaying = false;
 #else
-                    Application.Quit();
+                Application.Quit();
 #endif
-                }
-                else
-                {
-                    RestartGame();
-                }
+            }
+            else
+            {
+                RestartGame();
             }
         }
     }
@@ -53,42 +61,131 @@ public class GameOverManager : MonoBehaviour
         if (gameOverTriggered) return;
         gameOverTriggered = true;
 
-        HUDController hud = FindObjectOfType<HUDController>();
-        if (hud != null) hud.PauseRunTimer();
+        // Pausar el run timer
+        HUDController hud = FindFirstObjectByType<HUDController>();
+        if (hud != null)
+            hud.PauseRunTimer();
+
+        // Desactivar control del player
+        DisablePlayerControl();
 
         StartCoroutine(GameOverSequence());
     }
 
+    private void DisablePlayerControl()
+    {
+        if (player == null)
+        {
+            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+            if (playerObj != null)
+                player = playerObj;
+        }
+
+        if (player == null) return;
+
+        // Desactivar el script de movimiento
+        var fpController = player.GetComponent<PlayerMovement>();
+        if (fpController != null)
+            fpController.enabled = false;
+
+        // Desactivar el disparo
+        var gunSystem = player.GetComponentInChildren<GunSystem>();
+        if (gunSystem != null)
+            gunSystem.enabled = false;
+
+        // Desactivar interacción
+        var interact = player.GetComponent<PlayerInteract>();
+        if (interact != null)
+            interact.enabled = false;
+
+        // Desactivar la interacción de tienda
+        var shopInteract = player.GetComponent<ShopScreenInteraction>();
+        if (shopInteract != null)
+            shopInteract.enabled = false;
+
+        // Congelar el rigidbody
+        var rb = player.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = true;
+        }
+    }
+
     private IEnumerator GameOverSequence()
     {
+        // Mostrar cursor
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // SlowMo
+        // SlowMo + Caída de cámara simultáneos
         Time.timeScale = slowMoScale;
-        float elapsed = 0f;
-        while (elapsed < slowMoDuration)
+
+        // Encontrar la cámara si no está asignada
+        if (cameraHolder == null)
         {
-            elapsed += Time.unscaledDeltaTime;
-            yield return null;
+            Camera mainCam = Camera.main;
+            if (mainCam != null)
+                cameraHolder = mainCam.transform.parent != null
+                    ? mainCam.transform.parent
+                    : mainCam.transform;
         }
 
-        // Preparar BSOD text antes de mostrar
+        // Animación de caída
+        if (cameraHolder != null)
+            yield return StartCoroutine(CameraFallAnimation());
+        else
+            yield return new WaitForSecondsRealtime(slowMoDuration);
+
+        // Preparar BSOD
         BuildBSODText();
 
-        // Aparecer de golpe (como BSOD real)
+        // Aparecer BSOD de golpe
         bsodOverlay.gameObject.SetActive(true);
         bsodOverlay.alpha = 1f;
 
-        // Congelar
+        // Congelar completamente
         Time.timeScale = 0f;
 
         waitingForInput = true;
     }
 
+    private IEnumerator CameraFallAnimation()
+    {
+        Vector3 startLocalPos = cameraHolder.localPosition;
+        Quaternion startLocalRot = cameraHolder.localRotation;
+
+        // Caer hacia la derecha y abajo
+        Vector3 endLocalPos = startLocalPos + new Vector3(0f, -fallHeight, 0f);
+        Quaternion endLocalRot = startLocalRot * Quaternion.Euler(0f, 0f, fallAngle);
+
+        float elapsed = 0f;
+
+        while (elapsed < fallDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = elapsed / fallDuration;
+
+            // Ease-in: empieza lento, acelera (como gravedad)
+            float easedT = t * t;
+
+            cameraHolder.localPosition = Vector3.Lerp(startLocalPos, endLocalPos, easedT);
+            cameraHolder.localRotation = Quaternion.Slerp(startLocalRot, endLocalRot, easedT);
+
+            yield return null;
+        }
+
+        cameraHolder.localPosition = endLocalPos;
+        cameraHolder.localRotation = endLocalRot;
+
+        // Pequeña pausa en el suelo antes del BSOD
+        yield return new WaitForSecondsRealtime(0.3f);
+    }
+
     private void BuildBSODText()
     {
-        HUDController hud = FindObjectOfType<HUDController>();
+        HUDController hud = FindFirstObjectByType<HUDController>();
 
         int kills = hud != null ? hud.GetKillCount() : 0;
         float runTime = hud != null ? hud.GetRunTime() : 0f;
@@ -123,7 +220,36 @@ public class GameOverManager : MonoBehaviour
     private void RestartGame()
     {
         waitingForInput = false;
+        gameOverTriggered = false;
+
+        // Restaurar tiempo
         Time.timeScale = 1f;
+
+        // Descargar TODAS las escenas aditivas antes de recargar
+        StartCoroutine(FullRestart());
+    }
+
+    private IEnumerator FullRestart()
+    {
+        // Descargar todas las escenas aditivas
+        int sceneCount = SceneManager.sceneCount;
+        for (int i = sceneCount - 1; i >= 0; i--)
+        {
+            Scene scene = SceneManager.GetSceneAt(i);
+
+            // No descargar la escena principal
+            if (scene.name == mainSceneName) continue;
+            if (scene == SceneManager.GetActiveScene()) continue;
+
+            AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
+            if (unload != null)
+            {
+                while (!unload.isDone)
+                    yield return null;
+            }
+        }
+
+        // Recargar la escena principal limpia
         SceneManager.LoadScene(mainSceneName);
     }
 }
