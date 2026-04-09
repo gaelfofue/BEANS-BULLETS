@@ -1,166 +1,373 @@
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.Rendering.Universal.Internal;
 
-public class EnemyAIBase : MonoBehaviour
+public class EnemyAI : MonoBehaviour
 {
-    #region GENERAL VARIABLES
+    #region General Variables
     [Header("AI Configuration")]
-    [SerializeField] NavMeshAgent agent; //Ref al cerebro NavMesh del objeto
-    [SerializeField] Transform target; //Ref a la posicion del targer a perseguir
-    [SerializeField] LayerMask targetLayer; //Define la capa del target (Deteccion)
-    [SerializeField] LayerMask groundLayer; //Define la capa del suelo (Definir puntos navegables)
+    [SerializeField] private Transform target;
+    [SerializeField] private LayerMask targetLayer;
 
     [Header("Patroling Stats")]
-    [SerializeField] float walkPointRange = 8f; //Radio maximo de margen espacial para buscar puntos navegables
-    Vector3 walkPoint; //Posicion del punto a perseguir
-    bool walkPointSet; //Si es falso, busca punto. Si es verdadero, no puede buscar punto
+    [SerializeField] private float walkPointRange = 8f;
+    [SerializeField] private bool useWaypoints;
+    [SerializeField] private Transform[] waypoints;
 
     [Header("Attacking Stats")]
-    [SerializeField] float timeBetweenAttacks = 1f; //Tiempo entre ataque y ataque
-    [SerializeField] GameObject projectile; //Ref al prefab del projectil
-    [SerializeField] Transform shootPoint; //Posicion inicial del disparo
-    [SerializeField] float shootSpeedY; //Potencia de disparo vertical (Solo para catapulta)
-    [SerializeField] float shootSpeedZ = 10f; //Potencia de disparo hacia delante (Siempre esta)
-    bool alreadyAttacked; //Se pregunta si esta atacando para no stackear ataques (Capa de seguridad)
+    [SerializeField] private float timeBetweenAttacks = 1.5f;
+    [SerializeField] private GameObject projectilePrefab;
+    [SerializeField] private Transform shootPoint;
+    [SerializeField] private float projectileSpeed = 15f;
+    [SerializeField] private float projectileDamage = 2.5f;
+    [SerializeField] private float projectileGravity = 0f; // Para arco parab�lico
 
     [Header("States & Detection Areas")]
-    [SerializeField] float sightRange = 10f; //Radio de la deteccion de persecucion
-    [SerializeField] float attackRange = 4f; //Radio de la deteccion del ataque
-    [SerializeField] bool targetInSightRange; //Determina si entra el estado PERSEGUIR
-    [SerializeField] bool targetInAttackRange; //Determina si entra el estado ATACAR
+    [SerializeField] private float sightRange = 20f;
+    [SerializeField] private float attackRange = 12f;
+    [SerializeField] private float tooCloseRange = 4f;
 
+    [Header("Movement")]
+    [SerializeField] private float chaseSpeed = 4f;
+    [SerializeField] private float retreatSpeed = 5f;
+    [SerializeField] private float rotationSpeed = 360f;
+
+    // Internal State
+    private bool targetInSightRange;
+    private bool targetInAttackRange;
+    private bool alreadyAttacked;
+
+    // Patrol
+    private Vector3 walkPoint;
+    private bool walkPointSet;
+    private int currentWaypointIndex;
+
+    // NavMesh (opcional)
+    private NavMeshAgent agent;
+    private bool useNavMesh = false;
+
+    // Direct Movement (fallback)
+    private bool useDirectMovement = false;
+
+    // Stuck Detection
     [Header("Stuck Detection")]
-    [SerializeField] float stuckCheckTime = 2f; //Tiempo que el agente espera quieto antes de preguntarse si esta stuck
-    [SerializeField] float stuckThreshold = 0.1f; //Margen de deteccion de stuck
-    [SerializeField] float maxStuckDuration = 3f; //Tiempo maximo de estar stuck
+    [SerializeField] private float stuckCheckTime = 2f;
+    [SerializeField] private float stuckThreshold = 0.1f;
+    [SerializeField] private float maxStuckDuration = 3f;
 
-    float stuckTimer; //Reloj que cuenta el tiempo de estar stuck
-    float lastCheckTime; //Define el tiempo de chequeo previo a estar stuck
-    Vector3 lastPosition; //Posicion del ultimo walkpoint perseguido
+    private float stuckTimer;
+    private float lastCheckTime;
+    private Vector3 lastPosition;
     #endregion
 
-    private void Awake()
+    void Start()
     {
-        target = GameObject.Find("Player").transform;
+        // Buscar player por tag (m�s seguro)
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null)
+            target = playerObj.transform;
+
+        // Intentar usar NavMeshAgent
         agent = GetComponent<NavMeshAgent>();
+        if (agent != null)
+        {
+            if (agent.isOnNavMesh)
+            {
+                useNavMesh = true;
+                agent.speed = chaseSpeed;
+                agent.acceleration = 40f;
+                agent.angularSpeed = rotationSpeed;
+                agent.stoppingDistance = attackRange * 0.8f;
+                agent.autoBraking = false;
+            }
+            else
+            {
+                // Intentar posicionar en NavMesh
+                NavMeshHit hit;
+                if (NavMesh.SamplePosition(transform.position, out hit, 10f, NavMesh.AllAreas))
+                {
+                    agent.Warp(hit.position);
+                    useNavMesh = true;
+                    agent.speed = chaseSpeed;
+                }
+                else
+                {
+                    // No hay NavMesh, usar movimiento directo
+                    agent.enabled = false;
+                    useDirectMovement = true;
+                    Debug.LogWarning($"[ENEMY] {name} no NavMesh found, using direct movement");
+                }
+            }
+        }
+        else
+        {
+            useDirectMovement = true;
+        }
+
         lastPosition = transform.position;
         lastCheckTime = Time.time;
     }
 
     void Update()
     {
+        if (target == null) return;
+
+        // Sincronizar Y con player si usa movimiento directo
+        if (useDirectMovement)
+        {
+            Vector3 pos = transform.position;
+            pos.y = target.position.y;
+            transform.position = pos;
+        }
+
         EnemyStateUpdater();
         CheckIfStuck();
     }
 
     void EnemyStateUpdater()
     {
-        //Accion que se encarga de la gestion de los estados de la IA
-        //Esfera de deteccion fisica
+        // Detecci�n con OverlapSphere
         Collider[] hits = Physics.OverlapSphere(transform.position, sightRange, targetLayer);
         targetInSightRange = hits.Length > 0;
-        //Si esta persiguiendo, calcula la distancia hasta que el minimo entre dentro del rango de ataque
+
         if (targetInSightRange)
         {
             float distance = Vector3.Distance(transform.position, target.position);
             targetInAttackRange = distance <= attackRange;
         }
+        else
+        {
+            targetInAttackRange = false;
+        }
 
-        //Logica de los cambios de estado
-        if (!targetInSightRange && !targetInAttackRange) Patroling();
-        else if (targetInSightRange && !targetInAttackRange) ChaseTarget();
-        else if (targetInSightRange && targetInAttackRange) AttackTarget();
+        // Estado
+        if (!targetInSightRange && !targetInAttackRange)
+            Patroling();
+        else if (targetInSightRange && !targetInAttackRange)
+            ChaseTarget();
+        else if (targetInSightRange && targetInAttackRange)
+            AttackTarget();
     }
 
     void Patroling()
     {
-        //Degine que el objeto patrulle y genere puntos de patrulla randoms
-        //1 - Revisa si hay punto a patrullar
         if (!walkPointSet)
         {
-            //Si no hay walkpoint, busca uno
-            SearchWalkPoint();
+            if (useWaypoints && waypoints.Length > 0)
+            {
+                walkPoint = waypoints[currentWaypointIndex].position;
+                walkPointSet = true;
+            }
+            else
+            {
+                SearchWalkPoint();
+            }
         }
-        else agent.SetDestination(walkPoint); //Si hay punto, lo persigue
 
-        //2 - Una vez ha llegado al punto, hay que decirle al sistema que puede generar uno nuevo
-        if ((transform.position - walkPoint).sqrMagnitude < 1f)
+        if (walkPointSet)
         {
-            walkPointSet = false;
+            MoveTowards(walkPoint);
+
+            // Llegamos al punto
+            float dist = Vector3.Distance(transform.position, walkPoint);
+            if (dist < 1.5f)
+            {
+                walkPointSet = false;
+
+                if (useWaypoints && waypoints.Length > 0)
+                {
+                    currentWaypointIndex++;
+                    if (currentWaypointIndex >= waypoints.Length)
+                        currentWaypointIndex = 0;
+                }
+            }
         }
     }
 
     void SearchWalkPoint()
     {
-        //Accion que busca un punto de patrulla random si no lo hay
-        int attempts = 0; //Numero interno de intentos de buscar punto nuevo
-        const int maxAttempts = 5; //En pocas palabras, que como maximo, tiene 5 intentos para buscar un punto nuevo
-
-        while (!walkPointSet && attempts < maxAttempts)
+        for (int i = 0; i < 5; i++)
         {
-            attempts++;
-            Vector3 randomPoint = transform.position + new Vector3(Random.Range(-walkPointRange, walkPointRange), 0, Random.Range(-walkPointRange, walkPointRange));
+            Vector3 randomPoint = transform.position + new Vector3(
+                Random.Range(-walkPointRange, walkPointRange),
+                0f,
+                Random.Range(-walkPointRange, walkPointRange)
+            );
 
-            //Chequear si el punto esta en un lugar en el que haya NavMesh Surface
-            if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, 2f, NavMesh.AllAreas))
+            if (useNavMesh)
             {
-                walkPoint = hit.position; //Determina el Vector 3 random a perseguir
-                if (Physics.Raycast(walkPoint, -transform.up, 2f, groundLayer))
+                NavMeshHit hit;
+                if (NavMesh.SamplePosition(randomPoint, out hit, 2f, NavMesh.AllAreas))
                 {
-                    walkPointSet = true; //Tenemos punto y el agente va hacia el
+                    walkPoint = hit.position;
+                    walkPointSet = true;
+                    return;
                 }
+            }
+            else
+            {
+                // Movimiento directo: solo usar el punto random
+                walkPoint = randomPoint;
+                walkPoint.y = target.position.y;
+                walkPointSet = true;
+                return;
             }
         }
     }
 
     void ChaseTarget()
     {
-        //Le dice al agente que persiga al target
-        agent.SetDestination(target.position);
+        float dist = Vector3.Distance(transform.position, target.position);
+
+        // Si demasiado cerca, retroceder
+        if (dist < tooCloseRange)
+        {
+            Retreat();
+        }
+        else
+        {
+            MoveTowards(target.position);
+        }
+
+        LookAtTarget();
     }
 
     void AttackTarget()
     {
-        //Accion que determina el ataque al objetivo
+        // Detenerse
+        if (useNavMesh && agent.isOnNavMesh)
+            agent.SetDestination(transform.position);
 
-        // 1 - Detener el movimiento 
-        agent.SetDestination(transform.position);
+        // Mirar al target
+        LookAtTarget();
 
-        // 2 - Rotacion suavizada para mirar al target
-        Vector3 direction = (target.position - transform.position).normalized;
-        //Condicional que revisa si agente y target NO se estan mirando
-        if (direction != Vector3.zero)
-        {
-            Quaternion lookRotation = Quaternion.LookRotation(direction);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, lookRotation, agent.angularSpeed * Time.deltaTime);
-        }
-
-        //3 - Definir el ataque en si
-        //Solo atacara si no se esta atacando
+        // Disparar
         if (!alreadyAttacked)
         {
-            Rigidbody rb = Instantiate(projectile, shootPoint.position, Quaternion.identity).GetComponent<Rigidbody>();
-            rb.AddForce(transform.forward * shootSpeedZ, ForceMode.Impulse);
+            FireProjectile();
             alreadyAttacked = true;
             Invoke(nameof(ResetAttack), timeBetweenAttacks);
+        }
+
+        // Mantener distancia
+        float dist = Vector3.Distance(transform.position, target.position);
+        if (dist < tooCloseRange)
+            Retreat();
+    }
+
+    void FireProjectile()
+    {
+        if (projectilePrefab == null)
+        {
+            Debug.LogError($"[ENEMY] {name} has no projectile prefab!");
+            return;
+        }
+
+        Vector3 spawnPos = shootPoint != null ? shootPoint.position : transform.position + Vector3.up;
+
+        // Direcci�n al player
+        Vector3 dir = (target.position - spawnPos);
+        dir.y += 0.5f; // Apuntar al centro del player
+        dir.Normalize();
+
+        // Instanciar
+        GameObject proj = Instantiate(projectilePrefab, spawnPos, Quaternion.identity);
+
+        // Si tiene el script EnemyProjectile
+        EnemyProjectile ep = proj.GetComponent<EnemyProjectile>();
+        if (ep != null)
+        {
+            ep.Launch(dir, projectileSpeed, projectileDamage);
+        }
+        else
+        {
+            // Fallback: usar Rigidbody si existe
+            Rigidbody rb = proj.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.linearVelocity = dir * projectileSpeed;
+                if (projectileGravity > 0f)
+                    rb.AddForce(Vector3.up * projectileGravity, ForceMode.Impulse);
+            }
         }
     }
 
     void ResetAttack()
     {
-        //Accion que resetea el ataque
         alreadyAttacked = false;
+    }
+
+    // ==================
+    // MOVEMENT
+    // ==================
+
+    void MoveTowards(Vector3 destination)
+    {
+        if (useNavMesh && agent.isOnNavMesh)
+        {
+            agent.SetDestination(destination);
+        }
+        else
+        {
+            // Movimiento directo
+            Vector3 dir = destination - transform.position;
+            dir.y = 0f;
+
+            if (dir.sqrMagnitude > 0.25f)
+            {
+                dir.Normalize();
+                Vector3 move = dir * chaseSpeed * Time.deltaTime;
+                move.y = 0f;
+                transform.position += move;
+            }
+        }
+    }
+
+    void Retreat()
+    {
+        Vector3 dir = transform.position - target.position;
+        dir.y = 0f;
+
+        if (dir.sqrMagnitude > 0.01f)
+        {
+            dir.Normalize();
+
+            if (useNavMesh && agent.isOnNavMesh)
+            {
+                Vector3 retreatPoint = transform.position + dir * 2f;
+                agent.SetDestination(retreatPoint);
+            }
+            else
+            {
+                Vector3 move = dir * retreatSpeed * Time.deltaTime;
+                move.y = 0f;
+                transform.position += move;
+            }
+        }
+    }
+
+    void LookAtTarget()
+    {
+        Vector3 dir = target.position - transform.position;
+        dir.y = 0f;
+
+        if (dir.sqrMagnitude > 0.01f)
+        {
+            Quaternion targetRot = Quaternion.LookRotation(dir);
+            transform.rotation = Quaternion.RotateTowards(
+                transform.rotation,
+                targetRot,
+                rotationSpeed * Time.deltaTime
+            );
+        }
     }
 
     void CheckIfStuck()
     {
-        //Accion que revisa si el agente esta atrapado
         if (Time.time - lastCheckTime > stuckCheckTime)
         {
             float distanceMoved = Vector3.Distance(transform.position, lastPosition);
 
-            if (distanceMoved > stuckThreshold && agent.hasPath)
+            if (distanceMoved < stuckThreshold)
             {
                 stuckTimer += stuckCheckTime;
             }
@@ -172,7 +379,8 @@ public class EnemyAIBase : MonoBehaviour
             if (stuckTimer >= maxStuckDuration)
             {
                 walkPointSet = false;
-                agent.ResetPath();
+                if (useNavMesh && agent.isOnNavMesh)
+                    agent.ResetPath();
                 stuckTimer = 0;
             }
 
@@ -181,13 +389,15 @@ public class EnemyAIBase : MonoBehaviour
         }
     }
 
-    private void OnDrawGizmosSelected()
+    void OnDrawGizmosSelected()
     {
-        if (Application.isPlaying) return; //Solo se ejecuta los gizmos en el editor de unity, no en build
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, sightRange);
 
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, sightRange);
+
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(transform.position, tooCloseRange);
     }
 }

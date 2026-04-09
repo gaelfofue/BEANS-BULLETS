@@ -23,6 +23,10 @@ public class GunSystem : MonoBehaviour
     [SerializeField] private AudioClip reloadSound;
     [SerializeField] private AudioClip emptySound;
 
+    [Header("Feedback")]
+    [SerializeField] private float screenShakeIntensity = 0.05f;
+    [SerializeField] private float screenShakeDuration = 0.08f;
+
     // Estado
     private int currentAmmo;
     private float timeSinceLastShot;
@@ -169,11 +173,18 @@ public class GunSystem : MonoBehaviour
         currentAmmo--;
         timeSinceLastShot = 0f;
 
+        // Audio
         PlaySound(fireSound);
 
+        // ★ SCREENSHAKE
+        if (CameraShake.Instance != null)
+            CameraShake.Instance.Shake(screenShakeIntensity * 1.5f, screenShakeDuration);
+
+        // Crosshair
         if (crosshair != null)
             crosshair.OnShoot();
 
+        // Recoil
         if (gunRecoil != null)
             gunRecoil.DoRecoil();
 
@@ -230,6 +241,10 @@ public class GunSystem : MonoBehaviour
 
         // Audio
         PlaySound(fireSound);
+
+        // ★ SCREENSHAKE
+        if (CameraShake.Instance != null)
+            CameraShake.Instance.Shake(screenShakeIntensity, screenShakeDuration);
 
         // Crosshair
         if (crosshair != null)
@@ -304,7 +319,7 @@ public class GunSystem : MonoBehaviour
     {
         isReloading = false;
         currentAmmo = stats.magSize;
-        timeSinceLastShot = stats.fireRate; // PERMITE DISPARAR INMEDIATAMENTE
+        timeSinceLastShot = stats.fireRate;
         UpdateHUD();
     }
 

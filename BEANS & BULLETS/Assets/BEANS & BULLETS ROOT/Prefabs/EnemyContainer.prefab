@@ -184,8 +184,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5180861589970303309}
+  - component: {fileID: 6821241647426604425}
   - component: {fileID: 6788543934268055190}
-  - component: {fileID: 5138134347293161218}
   - component: {fileID: 5690737444906977974}
   - component: {fileID: 8543425579482145247}
   - component: {fileID: 2804794944875950959}
@@ -214,30 +214,7 @@ Transform:
   - {fileID: 3559822146046255329}
   m_Father: {fileID: 8025130104011169052}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!136 &6788543934268055190
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8651800172083763293}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!54 &5138134347293161218
+--- !u!54 &6821241647426604425
 Rigidbody:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -262,8 +239,31 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 126
+  m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!136 &6788543934268055190
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8651800172083763293}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!195 &5690737444906977974
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -303,6 +303,8 @@ MonoBehaviour:
   damagedMat: {fileID: 2100000, guid: 33617448123cfd24c9d7eec27703dfc1, type: 2}
   deathVFX: {fileID: 7073067154317136502, guid: 1b68529692ef0914880d438a258c66f4, type: 3}
   enemyRend: {fileID: 2545937859754676616}
+  useFreezeFrame: 0
+  freezeDuration: 0
 --- !u!114 &2804794944875950959
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -315,24 +317,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1bd31bbb229757e48b74e9b9afc9fe02, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAIBase
-  agent: {fileID: 5690737444906977974}
   target: {fileID: 6248809168652289912, guid: 557a72bef94e3a541bff8d9775f9e4e3, type: 3}
   targetLayer:
     serializedVersion: 2
     m_Bits: 512
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 256
   walkPointRange: 8
+  useWaypoints: 0
+  waypoints: []
   timeBetweenAttacks: 1
-  projectile: {fileID: 449042133858933725, guid: cf1c13514a2a90941b220a1f691e8642, type: 3}
+  projectilePrefab: {fileID: 449042133858933725, guid: cf1c13514a2a90941b220a1f691e8642, type: 3}
   shootPoint: {fileID: 3559822146046255329}
-  shootSpeedY: 0
-  shootSpeedZ: 10
+  projectileSpeed: 15
+  projectileDamage: 2.5
+  projectileGravity: 0
   sightRange: 10
   attackRange: 4
-  targetInSightRange: 0
-  targetInAttackRange: 0
+  tooCloseRange: 4
+  chaseSpeed: 4
+  retreatSpeed: 5
+  rotationSpeed: 360
   stuckCheckTime: 2
   stuckThreshold: 0.1
   maxStuckDuration: 3

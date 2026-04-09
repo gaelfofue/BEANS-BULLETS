@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class EnemyHealth : MonoBehaviour
 {
@@ -10,8 +10,10 @@ public class EnemyHealth : MonoBehaviour
     [SerializeField] Material damagedMat;
     [SerializeField] GameObject deathVFX;
     [SerializeField] MeshRenderer enemyRend;
-    Material baseMat;
+    [SerializeField] float deathShakeIntensity = 0.12f;
+    [SerializeField] float deathShakeDuration = 0.1f;
 
+    Material baseMat;
     private RoomPiece myRoom;
 
     private void Awake()
@@ -19,6 +21,10 @@ public class EnemyHealth : MonoBehaviour
         health = maxHealth;
         if (enemyRend != null)
             baseMat = enemyRend.material;
+
+        // IMPORTANTE: Desactivar deathVFX al inicio
+        if (deathVFX != null)
+            deathVFX.SetActive(false);
     }
 
     public void SetRoom(RoomPiece room)
@@ -26,7 +32,6 @@ public class EnemyHealth : MonoBehaviour
         myRoom = room;
     }
 
-    // Para el GunSystem del profesor (int)
     public void TakeDamage(int damage)
     {
         health -= damage;
@@ -44,7 +49,6 @@ public class EnemyHealth : MonoBehaviour
         }
     }
 
-    // Para los BulletTypes de Bean & Bullets (float)
     public void TakeDamage(float damage)
     {
         TakeDamage(Mathf.RoundToInt(damage));
@@ -52,6 +56,11 @@ public class EnemyHealth : MonoBehaviour
 
     void Die()
     {
+        // Screen shake más fuerte al matar
+        if (CameraShake.Instance != null)
+            CameraShake.Instance.Shake(deathShakeIntensity, deathShakeDuration);
+
+        // VFX
         if (deathVFX != null)
         {
             deathVFX.transform.parent = null;
@@ -60,13 +69,22 @@ public class EnemyHealth : MonoBehaviour
             Destroy(deathVFX, 3f);
         }
 
+        // Timer
         if (GameTimer.Instance != null)
+        {
             GameTimer.Instance.AddKillTime();
+            Debug.Log("[ENEMY] AddKillTime called");
+        }
+        else
+        {
+            Debug.LogError("[ENEMY] GameTimer.Instance is NULL!");
+        }
 
+        // Room
         if (myRoom != null)
             myRoom.OnEnemyDied(this);
 
-        // FindFirstObjectByType en vez de FindObjectOfType (Unity 6)
+        // HUD
         HUDController hud = FindFirstObjectByType<HUDController>();
         if (hud != null)
             hud.RegisterKill();
