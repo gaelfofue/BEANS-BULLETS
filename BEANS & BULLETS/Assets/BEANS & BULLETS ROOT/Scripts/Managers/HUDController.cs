@@ -8,7 +8,6 @@ public class HUDController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI runTimerText;
 
     [Header("Combat Timer Bar")]
-    [SerializeField] private GameObject combatTimerPanel;
     [SerializeField] private RectTransform combatTimerFill;
     [SerializeField] private Image combatTimerImage;
 
@@ -31,6 +30,7 @@ public class HUDController : MonoBehaviour
     [SerializeField] private Color colorSafe = new Color(0f, 1f, 0.255f);
     [SerializeField] private Color colorWarning = new Color(1f, 0.843f, 0f);
     [SerializeField] private Color colorDanger = new Color(1f, 0f, 0.251f);
+    [SerializeField] private Color colorPaused = new Color(0.3f, 0.3f, 0.3f, 0.5f);
 
     [Header("Settings")]
     [SerializeField] private float blinkSpeed = 4f;
@@ -40,6 +40,7 @@ public class HUDController : MonoBehaviour
     private int killCount = 0;
     private float runTimer = 0f;
     private bool runTimerPaused = false;
+    private bool wasDead = false;
 
     private void Update()
     {
@@ -56,7 +57,7 @@ public class HUDController : MonoBehaviour
     {
         if (runTimerPaused) return;
 
-        runTimer += Time.deltaTime;
+        runTimer += Time.unscaledDeltaTime;
 
         int totalSeconds = Mathf.FloorToInt(runTimer);
         int minutes = totalSeconds / 60;
@@ -76,6 +77,11 @@ public class HUDController : MonoBehaviour
         return runTimer;
     }
 
+    public int GetKillCount()
+    {
+        return killCount;
+    }
+
     // ==================
     // COMBAT TIMER (barra inferior, solo en combate)
     // ==================
@@ -84,17 +90,13 @@ public class HUDController : MonoBehaviour
     {
         if (GameTimer.Instance == null) return;
 
-        bool inCombat = GameTimer.Instance.IsRunning() && !GameTimer.Instance.IsDead();
+        bool isDead = GameTimer.Instance.IsDead();
+        bool inCombat = GameTimer.Instance.IsRunning() && !isDead;
 
-        // Mostrar/ocultar panel
-        if (combatTimerPanel != null)
-            combatTimerPanel.SetActive(inCombat);
-
-        if (!inCombat) return;
-
+        // IMPORTANTE: Siempre actualizar el ratio para evitar el "salto"
         float ratio = GameTimer.Instance.GetTimePercent();
 
-        // Escalar barra
+        // Escalar barra SIEMPRE (nunca desactivar el objeto)
         if (combatTimerFill != null)
         {
             Vector3 scale = combatTimerFill.localScale;
@@ -102,19 +104,32 @@ public class HUDController : MonoBehaviour
             combatTimerFill.localScale = scale;
         }
 
-        // Color
+        // Color según estado
         if (combatTimerImage != null)
-            combatTimerImage.color = GetCombatColor(ratio);
+        {
+            combatTimerImage.color = GetCombatColor(ratio, inCombat, isDead);
+        }
+
+        // Detectar muerte para congelar
+        if (isDead && !wasDead)
+        {
+            runTimerPaused = true;
+        }
+        wasDead = isDead;
     }
 
-    private Color GetCombatColor(float ratio)
+    private Color GetCombatColor(float ratio, bool inCombat, bool isDead)
     {
+        if (isDead) return colorDanger;
+        if (!inCombat) return colorPaused; // Gris en tienda/pasillo
+
         if (ratio > 0.6f)
             return colorSafe;
         else if (ratio > 0.3f)
             return colorWarning;
         else
         {
+            // Peligro con parpadeo (usa unscaledTime para que funcione con timeScale 0)
             float blink = Mathf.PingPong(Time.unscaledTime * blinkSpeed, 1f);
             return Color.Lerp(colorDanger, Color.white, blink * 0.3f);
         }
@@ -129,11 +144,6 @@ public class HUDController : MonoBehaviour
         killCount++;
         if (scoreText != null)
             scoreText.text = killCount.ToString("D8");
-    }
-
-    public int GetKillCount()
-    {
-        return killCount;
     }
 
     // ==================

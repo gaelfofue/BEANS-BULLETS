@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 8025130104011169052}
   m_Layer: 7
   m_Name: EnemyContainer
-  m_TagString: Untagged
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -303,8 +303,8 @@ MonoBehaviour:
   damagedMat: {fileID: 2100000, guid: 33617448123cfd24c9d7eec27703dfc1, type: 2}
   deathVFX: {fileID: 7073067154317136502, guid: 1b68529692ef0914880d438a258c66f4, type: 3}
   enemyRend: {fileID: 2545937859754676616}
-  useFreezeFrame: 0
-  freezeDuration: 0
+  deathShakeIntensity: 0.5
+  deathShakeDuration: 0.3
 --- !u!114 &2804794944875950959
 MonoBehaviour:
   m_ObjectHideFlags: 0

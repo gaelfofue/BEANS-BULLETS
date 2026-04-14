@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 
 public class GameTimer : MonoBehaviour
@@ -37,7 +37,9 @@ public class GameTimer : MonoBehaviour
     void Start()
     {
         currentTime = startingTime;
-        StartTimer();
+        // ✅ NO LLAMAR StartTimer() aquí
+        // El timer empieza pausado y se activa al entrar a la primera sala de combate
+        isRunning = false;
     }
 
     void Update()
@@ -52,7 +54,10 @@ public class GameTimer : MonoBehaviour
             currentTime = 0;
             isDead = true;
             onTimerEnd?.Invoke();
-            FindObjectOfType<GameOverManager>()?.TriggerGameOver();
+
+            GameOverManager gom = FindFirstObjectByType<GameOverManager>();
+            if (gom != null)
+                gom.TriggerGameOver();
         }
     }
 
@@ -80,8 +85,12 @@ public class GameTimer : MonoBehaviour
     public void AddKillTime()
     {
         if (isDead) return;
+
+        float previousTime = currentTime;
         currentTime += timePerKill;
         currentTime = Mathf.Min(currentTime, maxTime);
+
+        Debug.Log($"[TIMER] AddKillTime: {previousTime:F1}s → {currentTime:F1}s (+{timePerKill}s)");
     }
 
     public void AddHitTime()

@@ -1,5 +1,3 @@
-// PieceTrigger.cs
-
 using UnityEngine;
 
 public class PieceTrigger : MonoBehaviour

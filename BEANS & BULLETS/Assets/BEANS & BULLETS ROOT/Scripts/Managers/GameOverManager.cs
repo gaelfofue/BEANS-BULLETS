@@ -1,7 +1,6 @@
-using System.Collections;
+ï»¿using System.Collections;
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem.XR;
 using UnityEngine.SceneManagement;
 
 public class GameOverManager : MonoBehaviour
@@ -31,28 +30,55 @@ public class GameOverManager : MonoBehaviour
 
     private void Start()
     {
-        bsodOverlay.alpha = 0f;
-        bsodOverlay.gameObject.SetActive(false);
+        if (bsodOverlay != null)
+        {
+            bsodOverlay.alpha = 0f;
+            bsodOverlay.gameObject.SetActive(false);
+            // Importante: No bloquear raycasts cuando estÃ¡ invisible
+            bsodOverlay.blocksRaycasts = false;
+            bsodOverlay.interactable = false;
+        }
     }
 
+    // SOLUCIÃ“N ROBUSTA: OnGUI funciona SIEMPRE, incluso con timeScale = 0
+    private void OnGUI()
+    {
+        if (!waitingForInput) return;
+
+        Event e = Event.current;
+        if (e.type == EventType.KeyDown || e.type == EventType.MouseDown)
+        {
+            if (e.keyCode == KeyCode.Escape)
+            {
+                QuitGame();
+            }
+            else if (e.type == EventType.KeyDown || e.type == EventType.MouseDown)
+            {
+                // Evitar que teclas de sistema reinicien por accidente
+                if (e.keyCode != KeyCode.None || e.type == EventType.MouseDown)
+                {
+                    RestartGame();
+                }
+            }
+        }
+    }
+
+    // Backup por si OnGUI no es de tu gusto (menos confiable con timeScale 0)
     private void Update()
     {
         if (!waitingForInput) return;
 
-        if (Input.anyKeyDown)
+        // MÃ©todo alternativo usando Unscaled time para delays si los necesitas
+        if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-#if UNITY_EDITOR
-                UnityEditor.EditorApplication.isPlaying = false;
-#else
-                Application.Quit();
-#endif
-            }
-            else
-            {
-                RestartGame();
-            }
+            QuitGame();
+        }
+        else if (Input.GetKeyDown(KeyCode.E) ||
+                 Input.GetKeyDown(KeyCode.Space) ||
+                 Input.GetKeyDown(KeyCode.Return) ||
+                 Input.GetMouseButtonDown(0))
+        {
+            RestartGame();
         }
     }
 
@@ -66,9 +92,7 @@ public class GameOverManager : MonoBehaviour
         if (hud != null)
             hud.PauseRunTimer();
 
-        // Desactivar control del player
         DisablePlayerControl();
-
         StartCoroutine(GameOverSequence());
     }
 
@@ -83,27 +107,22 @@ public class GameOverManager : MonoBehaviour
 
         if (player == null) return;
 
-        // Desactivar el script de movimiento
         var fpController = player.GetComponent<PlayerMovement>();
         if (fpController != null)
             fpController.enabled = false;
 
-        // Desactivar el disparo
         var gunSystem = player.GetComponentInChildren<GunSystem>();
         if (gunSystem != null)
             gunSystem.enabled = false;
 
-        // Desactivar interacción
         var interact = player.GetComponent<PlayerInteract>();
         if (interact != null)
             interact.enabled = false;
 
-        // Desactivar la interacción de tienda
         var shopInteract = player.GetComponent<ShopScreenInteraction>();
         if (shopInteract != null)
             shopInteract.enabled = false;
 
-        // Congelar el rigidbody
         var rb = player.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -115,14 +134,11 @@ public class GameOverManager : MonoBehaviour
 
     private IEnumerator GameOverSequence()
     {
-        // Mostrar cursor
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
 
-        // SlowMo + Caída de cámara simultáneos
         Time.timeScale = slowMoScale;
 
-        // Encontrar la cámara si no está asignada
         if (cameraHolder == null)
         {
             Camera mainCam = Camera.main;
@@ -132,23 +148,25 @@ public class GameOverManager : MonoBehaviour
                     : mainCam.transform;
         }
 
-        // Animación de caída
         if (cameraHolder != null)
             yield return StartCoroutine(CameraFallAnimation());
         else
             yield return new WaitForSecondsRealtime(slowMoDuration);
 
-        // Preparar BSOD
         BuildBSODText();
 
-        // Aparecer BSOD de golpe
+        // Activar BSOD con configuraciÃ³n correcta
         bsodOverlay.gameObject.SetActive(true);
         bsodOverlay.alpha = 1f;
+        // Permitir que los inputs pasen a travÃ©s (para que OnGUI funcione)
+        // o bloquearlos si tienes botones UI. Para input global, dÃ©jalo en false.
+        bsodOverlay.blocksRaycasts = false;
+        bsodOverlay.interactable = false;
 
-        // Congelar completamente
         Time.timeScale = 0f;
-
         waitingForInput = true;
+
+        Debug.Log("Game Over - Waiting for input...");
     }
 
     private IEnumerator CameraFallAnimation()
@@ -156,7 +174,6 @@ public class GameOverManager : MonoBehaviour
         Vector3 startLocalPos = cameraHolder.localPosition;
         Quaternion startLocalRot = cameraHolder.localRotation;
 
-        // Caer hacia la derecha y abajo
         Vector3 endLocalPos = startLocalPos + new Vector3(0f, -fallHeight, 0f);
         Quaternion endLocalRot = startLocalRot * Quaternion.Euler(0f, 0f, fallAngle);
 
@@ -164,10 +181,9 @@ public class GameOverManager : MonoBehaviour
 
         while (elapsed < fallDuration)
         {
+            // Usar unscaledDeltaTime porque timeScale estÃ¡ en slowMo
             elapsed += Time.unscaledDeltaTime;
             float t = elapsed / fallDuration;
-
-            // Ease-in: empieza lento, acelera (como gravedad)
             float easedT = t * t;
 
             cameraHolder.localPosition = Vector3.Lerp(startLocalPos, endLocalPos, easedT);
@@ -178,15 +194,12 @@ public class GameOverManager : MonoBehaviour
 
         cameraHolder.localPosition = endLocalPos;
         cameraHolder.localRotation = endLocalRot;
-
-        // Pequeña pausa en el suelo antes del BSOD
         yield return new WaitForSecondsRealtime(0.3f);
     }
 
     private void BuildBSODText()
     {
         HUDController hud = FindFirstObjectByType<HUDController>();
-
         int kills = hud != null ? hud.GetKillCount() : 0;
         float runTime = hud != null ? hud.GetRunTime() : 0f;
         int rooms = LevelManager.Instance != null
@@ -211,7 +224,7 @@ public class GameOverManager : MonoBehaviour
             "\n" +
             "   * * * * * * * * * * *\n" +
             "\n" +
-            "   Press any key to reboot.\n" +
+            "   Press E / SPACE / CLICK to reboot.\n" +
             "   Press ESC to shut down.\n" +
             "\n" +
             "   Press any key to continue _";
@@ -219,25 +232,31 @@ public class GameOverManager : MonoBehaviour
 
     private void RestartGame()
     {
+        if (!waitingForInput) return; // Evitar dobles llamadas
+
         waitingForInput = false;
-        gameOverTriggered = false;
+        Debug.Log("Restarting game...");
 
-        // Restaurar tiempo
         Time.timeScale = 1f;
-
-        // Descargar TODAS las escenas aditivas antes de recargar
         StartCoroutine(FullRestart());
+    }
+
+    private void QuitGame()
+    {
+        Debug.Log("Quitting game...");
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 
     private IEnumerator FullRestart()
     {
-        // Descargar todas las escenas aditivas
         int sceneCount = SceneManager.sceneCount;
         for (int i = sceneCount - 1; i >= 0; i--)
         {
             Scene scene = SceneManager.GetSceneAt(i);
-
-            // No descargar la escena principal
             if (scene.name == mainSceneName) continue;
             if (scene == SceneManager.GetActiveScene()) continue;
 
@@ -249,7 +268,6 @@ public class GameOverManager : MonoBehaviour
             }
         }
 
-        // Recargar la escena principal limpia
         SceneManager.LoadScene(mainSceneName);
     }
 }

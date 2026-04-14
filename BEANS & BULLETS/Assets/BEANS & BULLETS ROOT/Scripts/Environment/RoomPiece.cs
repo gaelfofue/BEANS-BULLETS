@@ -1,5 +1,6 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
 
 public class RoomPiece : MonoBehaviour
 {
@@ -48,8 +49,12 @@ public class RoomPiece : MonoBehaviour
             if (exitDoor != null)
                 exitDoor.SetState(Door.DoorState.Locked);
 
+            // ✅ Activar timer al entrar a sala de combate
             if (GameTimer.Instance != null)
+            {
                 GameTimer.Instance.SetPaused(false);
+                Debug.Log("[ROOM] Combat timer STARTED");
+            }
 
             SpawnEnemies();
         }
@@ -98,9 +103,20 @@ public class RoomPiece : MonoBehaviour
     public void OnEnemyDied(EnemyHealth enemy)
     {
         activeEnemies.Remove(enemy);
+        Debug.Log($"[ROOM] Enemy died. Remaining: {activeEnemies.Count}");
 
         if (activeEnemies.Count <= 0)
-            Complete();
+        {
+            // ✅ Pequeño delay antes de pausar el timer
+            // Para que el player vea el tiempo añadido
+            StartCoroutine(DelayedComplete());
+        }
+    }
+
+    private IEnumerator DelayedComplete()
+    {
+        yield return new WaitForSeconds(0.5f);
+        Complete();
     }
 
     private void Complete()
@@ -108,19 +124,18 @@ public class RoomPiece : MonoBehaviour
         if (completed) return;
         completed = true;
 
+        Debug.Log("[ROOM] Combat CLEARED");
+
         if (GameTimer.Instance != null)
             GameTimer.Instance.SetPaused(true);
 
         if (exitDoor != null)
             exitDoor.SetState(Door.DoorState.Closed);
 
-        LevelManager.Instance.OnRoomCompleted();
+        if (LevelManager.Instance != null)
+            LevelManager.Instance.OnRoomCompleted();
     }
 
-    /// <summary>
-    /// Llamado por el objeto interactuable de la tienda.
-    /// Desbloquea la puerta de salida.
-    /// </summary>
     public void OnShopInteractionComplete()
     {
         if (pieceType != PieceType.Shop) return;
