@@ -1,5 +1,4 @@
-using UnityEngine;
-using UnityEngine.InputSystem;
+﻿using UnityEngine;
 
 public class ShopScreenInteraction : MonoBehaviour
 {
@@ -18,6 +17,7 @@ public class ShopScreenInteraction : MonoBehaviour
     void Update()
     {
         CheckLookAt();
+        CheckClick(); // 🆕
     }
 
     void CheckLookAt()
@@ -27,17 +27,14 @@ public class ShopScreenInteraction : MonoBehaviour
 
         if (Physics.Raycast(ray, out hit, interactRange, shopScreenLayer))
         {
-            // �Estamos mirando un slot?
             ShopSlotUI slot = hit.collider.GetComponent<ShopSlotUI>();
             if (slot == null)
                 slot = hit.collider.GetComponentInParent<ShopSlotUI>();
 
             if (slot != null)
             {
-                // Nuevo slot
                 if (slot != currentSlot)
                 {
-                    // Dejar de mirar el anterior
                     if (currentSlot != null)
                         currentSlot.OnLookAway();
 
@@ -65,17 +62,17 @@ public class ShopScreenInteraction : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Conectar al Input System: evento de click/disparo en tienda.
-    /// </summary>
-    public void OnShopSelect(InputAction.CallbackContext context)
+    // 🆕 DETECCIÓN DIRECTA DE CLICKS
+    void CheckClick()
     {
-        if (!context.performed) return;
-
-        if (currentSlot != null)
+        // Detectar click izquierdo O disparo (Fire1)
+        if (Input.GetMouseButtonDown(0) || Input.GetButtonDown("Fire1"))
         {
-            currentSlot.OnSelected();
-            Debug.Log($"[SHOP] Selected slot!");
+            if (currentSlot != null)
+            {
+                currentSlot.OnSelected();
+                Debug.Log($"[SHOP] Selected slot: {currentSlot.name}");
+            }
         }
     }
 }

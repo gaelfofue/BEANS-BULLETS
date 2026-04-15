@@ -6,7 +6,8 @@ using UnityEngine.SceneManagement;
 public class GameOverManager : MonoBehaviour
 {
     [Header("Scene")]
-    [SerializeField] private string mainSceneName;
+    [Tooltip("Deja vacío para recargar la escena actual")]
+    [SerializeField] private string mainSceneName = ""; // 🆕 Opcional
 
     [Header("BSOD")]
     [SerializeField] private CanvasGroup bsodOverlay;
@@ -34,49 +35,35 @@ public class GameOverManager : MonoBehaviour
         {
             bsodOverlay.alpha = 0f;
             bsodOverlay.gameObject.SetActive(false);
-            // Importante: No bloquear raycasts cuando está invisible
             bsodOverlay.blocksRaycasts = false;
             bsodOverlay.interactable = false;
         }
+
+        // 🆕 Auto-detectar escena si no está asignada
+        if (string.IsNullOrEmpty(mainSceneName))
+        {
+            mainSceneName = SceneManager.GetActiveScene().name;
+            Debug.Log($"[GAME OVER] Auto-detected scene: {mainSceneName}");
+        }
     }
 
-    // SOLUCIÓN ROBUSTA: OnGUI funciona SIEMPRE, incluso con timeScale = 0
     private void OnGUI()
     {
         if (!waitingForInput) return;
 
         Event e = Event.current;
-        if (e.type == EventType.KeyDown || e.type == EventType.MouseDown)
+        if (e.type == EventType.KeyDown)
         {
             if (e.keyCode == KeyCode.Escape)
             {
                 QuitGame();
             }
-            else if (e.type == EventType.KeyDown || e.type == EventType.MouseDown)
+            else if (e.keyCode != KeyCode.None)
             {
-                // Evitar que teclas de sistema reinicien por accidente
-                if (e.keyCode != KeyCode.None || e.type == EventType.MouseDown)
-                {
-                    RestartGame();
-                }
+                RestartGame();
             }
         }
-    }
-
-    // Backup por si OnGUI no es de tu gusto (menos confiable con timeScale 0)
-    private void Update()
-    {
-        if (!waitingForInput) return;
-
-        // Método alternativo usando Unscaled time para delays si los necesitas
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            QuitGame();
-        }
-        else if (Input.GetKeyDown(KeyCode.E) ||
-                 Input.GetKeyDown(KeyCode.Space) ||
-                 Input.GetKeyDown(KeyCode.Return) ||
-                 Input.GetMouseButtonDown(0))
+        else if (e.type == EventType.MouseDown)
         {
             RestartGame();
         }
@@ -87,7 +74,6 @@ public class GameOverManager : MonoBehaviour
         if (gameOverTriggered) return;
         gameOverTriggered = true;
 
-        // Pausar el run timer
         HUDController hud = FindFirstObjectByType<HUDController>();
         if (hud != null)
             hud.PauseRunTimer();
@@ -155,18 +141,15 @@ public class GameOverManager : MonoBehaviour
 
         BuildBSODText();
 
-        // Activar BSOD con configuración correcta
         bsodOverlay.gameObject.SetActive(true);
         bsodOverlay.alpha = 1f;
-        // Permitir que los inputs pasen a través (para que OnGUI funcione)
-        // o bloquearlos si tienes botones UI. Para input global, déjalo en false.
         bsodOverlay.blocksRaycasts = false;
         bsodOverlay.interactable = false;
 
         Time.timeScale = 0f;
         waitingForInput = true;
 
-        Debug.Log("Game Over - Waiting for input...");
+        Debug.Log("Game Over - Press any key to restart");
     }
 
     private IEnumerator CameraFallAnimation()
@@ -181,7 +164,6 @@ public class GameOverManager : MonoBehaviour
 
         while (elapsed < fallDuration)
         {
-            // Usar unscaledDeltaTime porque timeScale está en slowMo
             elapsed += Time.unscaledDeltaTime;
             float t = elapsed / fallDuration;
             float easedT = t * t;
@@ -232,18 +214,20 @@ public class GameOverManager : MonoBehaviour
 
     private void RestartGame()
     {
-        if (!waitingForInput) return; // Evitar dobles llamadas
+        if (!waitingForInput) return;
 
         waitingForInput = false;
-        Debug.Log("Restarting game...");
+        Debug.Log($"[RESTART] Reloading {mainSceneName}...");
 
         Time.timeScale = 1f;
-        StartCoroutine(FullRestart());
+
+        // 🆕 Método simple y directo
+        SceneManager.LoadScene(mainSceneName);
     }
 
     private void QuitGame()
     {
-        Debug.Log("Quitting game...");
+        Debug.Log("[QUIT] Exiting...");
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -251,23 +235,5 @@ public class GameOverManager : MonoBehaviour
 #endif
     }
 
-    private IEnumerator FullRestart()
-    {
-        int sceneCount = SceneManager.sceneCount;
-        for (int i = sceneCount - 1; i >= 0; i--)
-        {
-            Scene scene = SceneManager.GetSceneAt(i);
-            if (scene.name == mainSceneName) continue;
-            if (scene == SceneManager.GetActiveScene()) continue;
-
-            AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
-            if (unload != null)
-            {
-                while (!unload.isDone)
-                    yield return null;
-            }
-        }
-
-        SceneManager.LoadScene(mainSceneName);
-    }
+    // 🗑️ ELIMINADO: FullRestart con lógica innecesaria
 }
