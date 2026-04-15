@@ -78,7 +78,7 @@ GameObject:
   - component: {fileID: 7343578087934299618}
   m_Layer: 0
   m_Name: Orientation
-  m_TagString: Untagged
+  m_TagString: HeadShot
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

@@ -81,7 +81,7 @@ public class LevelManager : MonoBehaviour
         yield return StartCoroutine(LoadOnePiece());
 
         initialLoadDone = true;
-        Debug.Log($"=== INITIAL LOAD COMPLETE === Piezas: {pieces.Count}");
+        Debug.Log($"INITIAL LOAD COMPLETE Piezas: {pieces.Count}");
     }
 
     // ============================
@@ -104,7 +104,7 @@ public class LevelManager : MonoBehaviour
 
         playerIndex = newIndex;
 
-        Debug.Log($"=== PLAYER MOVED === Pieza {playerIndex}: {piece.gameObject.name} ({piece.GetPieceType()})");
+        Debug.Log($"PLAYER MOVED Pieza {playerIndex}: {piece.gameObject.name} ({piece.GetPieceType()})");
 
         piece.Activate();
 
@@ -118,7 +118,7 @@ public class LevelManager : MonoBehaviour
     public void OnRoomCompleted()
     {
         roomsCompleted++;
-        Debug.Log($"=== ROOM COMPLETED === Total: {roomsCompleted}");
+        Debug.Log($"ROOM COMPLETED Total: {roomsCompleted}");
     }
 
     /// <summary>
@@ -126,7 +126,7 @@ public class LevelManager : MonoBehaviour
     /// </summary>
     public void OnShopCompleted()
     {
-        Debug.Log("=== SHOP COMPLETED ===");
+        Debug.Log("SHOP COMPLETED");
         // No incrementamos roomsCompleted porque la tienda no es combate
     }
 
