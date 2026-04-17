@@ -156,7 +156,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77314df93e2691c46bca347ea024d678, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShopScreenInteraction
-  interactRange: 5
+  interactRange: 1
   shopScreenLayer:
     serializedVersion: 2
     m_Bits: 524288

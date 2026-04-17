@@ -58,6 +58,7 @@ public class GameTimer : MonoBehaviour
             GameOverManager gom = FindFirstObjectByType<GameOverManager>();
             if (gom != null)
                 gom.TriggerGameOver();
+            Debug.Log($"[TIMER] Time: {currentTime:F2} / {maxTime:F2} | Running: {isRunning} | Percent: {GetTimePercent():F2}");
         }
     }
 

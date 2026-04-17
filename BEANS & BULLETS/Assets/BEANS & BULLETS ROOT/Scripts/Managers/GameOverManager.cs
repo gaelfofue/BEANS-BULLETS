@@ -45,6 +45,16 @@ public class GameOverManager : MonoBehaviour
             mainSceneName = SceneManager.GetActiveScene().name;
             Debug.Log($"[GAME OVER] Auto-detected scene: {mainSceneName}");
         }
+
+        // 🆕 DEBUG
+        Debug.Log($"[GAME OVER] Active scene: {SceneManager.GetActiveScene().name}");
+        Debug.Log($"[GAME OVER] mainSceneName field: '{mainSceneName}'");
+
+        if (string.IsNullOrEmpty(mainSceneName))
+        {
+            mainSceneName = SceneManager.GetActiveScene().name;
+            Debug.Log($"[GAME OVER] Auto-set to: {mainSceneName}");
+        }
     }
 
     private void OnGUI()
@@ -52,19 +62,29 @@ public class GameOverManager : MonoBehaviour
         if (!waitingForInput) return;
 
         Event e = Event.current;
+
+        // 🆕 LOG TODOS LOS EVENTOS
+        if (e.type == EventType.KeyDown || e.type == EventType.MouseDown)
+        {
+            Debug.Log($"[INPUT] Type: {e.type} | Key: {e.keyCode} | Button: {e.button}");
+        }
+
         if (e.type == EventType.KeyDown)
         {
             if (e.keyCode == KeyCode.Escape)
             {
+                Debug.Log("[INPUT] ESC pressed → Quitting");
                 QuitGame();
             }
             else if (e.keyCode != KeyCode.None)
             {
+                Debug.Log($"[INPUT] Key {e.keyCode} pressed → Restarting");
                 RestartGame();
             }
         }
         else if (e.type == EventType.MouseDown)
         {
+            Debug.Log("[INPUT] Mouse clicked → Restarting");
             RestartGame();
         }
     }
@@ -219,9 +239,13 @@ public class GameOverManager : MonoBehaviour
         waitingForInput = false;
         Debug.Log($"[RESTART] Reloading {mainSceneName}...");
 
+        // 🆕 Resetear HUD antes de recargar
+        HUDController hud = FindFirstObjectByType<HUDController>();
+        if (hud != null)
+            hud.ResetCombatTimer();
+
         Time.timeScale = 1f;
 
-        // 🆕 Método simple y directo
         SceneManager.LoadScene(mainSceneName);
     }
 

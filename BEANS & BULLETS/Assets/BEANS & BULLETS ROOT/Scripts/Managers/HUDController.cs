@@ -9,8 +9,8 @@ public class HUDController : MonoBehaviour
 
     [Header("Combat Timer Bar")]
     [SerializeField] private GameObject combatTimerPanel;
-    [SerializeField] private RectTransform combatTimerFill;
-    [SerializeField] private Image combatTimerImage;
+    [SerializeField] private Image combatTimerFill; // 🆕 Ahora es Image, no RectTransform
+    [SerializeField] private Image combatTimerBackground; // 🆕 Opcional: para el fondo
 
     [Header("Score")]
     [SerializeField] private TextMeshProUGUI scoreText;
@@ -28,9 +28,9 @@ public class HUDController : MonoBehaviour
     [SerializeField] private Image slotIcon3;
 
     [Header("Combat Timer Colors")]
-    [SerializeField] private Color colorSafe = new Color(0f, 1f, 0.255f);
-    [SerializeField] private Color colorWarning = new Color(1f, 0.843f, 0f);
-    [SerializeField] private Color colorDanger = new Color(1f, 0f, 0.251f);
+    [SerializeField] private Color colorSafe = new Color(0f, 1f, 0.255f, 1f); // 🆕 Alpha en 1
+    [SerializeField] private Color colorWarning = new Color(1f, 0.843f, 0f, 1f);
+    [SerializeField] private Color colorDanger = new Color(1f, 0f, 0.251f, 1f);
 
     [Header("Settings")]
     [SerializeField] private float blinkSpeed = 4f;
@@ -41,8 +41,11 @@ public class HUDController : MonoBehaviour
     private float runTimer = 0f;
     private bool runTimerPaused = false;
 
-    // 🆕 Cache para evitar llamadas constantes
-    private float lastTimerRatio = 1f;
+    private void Start()
+    {
+        // 🆕 Inicializar barra correctamente
+        ResetCombatTimer();
+    }
 
     private void Update()
     {
@@ -52,7 +55,7 @@ public class HUDController : MonoBehaviour
     }
 
     // ==================
-    // RUN TIMER (tiempo total de partida)
+    // RUN TIMER
     // ==================
 
     private void UpdateRunTimer()
@@ -66,7 +69,8 @@ public class HUDController : MonoBehaviour
         int seconds = totalSeconds % 60;
         int ms = Mathf.FloorToInt((runTimer - totalSeconds) * 100f);
 
-        runTimerText.text = string.Format("{0:00}:{1:00}:{2:00}", minutes, seconds, ms);
+        if (runTimerText != null)
+            runTimerText.text = string.Format("{0:00}:{1:00}:{2:00}", minutes, seconds, ms);
     }
 
     public void PauseRunTimer()
@@ -80,7 +84,7 @@ public class HUDController : MonoBehaviour
     }
 
     // ==================
-    // COMBAT TIMER (barra inferior, solo en combate)
+    // COMBAT TIMER (NUEVO MÉTODO)
     // ==================
 
     private void UpdateCombatTimer()
@@ -93,33 +97,21 @@ public class HUDController : MonoBehaviour
         }
 
         bool isRunning = GameTimer.Instance.IsRunning();
-        bool isDead = GameTimer.Instance.IsDead();
 
-        // Mostrar solo si está corriendo
+        // Mostrar/ocultar panel
         if (combatTimerPanel != null)
             combatTimerPanel.SetActive(isRunning);
 
-        if (!isRunning || isDead) return;
+        if (!isRunning) return;
 
         float ratio = GameTimer.Instance.GetTimePercent();
 
-        // 🆕 MÉTODO PARA IMÁGENES: Cambiar ancho del RectTransform
+        // 🆕 MÉTODO CORRECTO: fillAmount
         if (combatTimerFill != null)
         {
-            // Opción A: Si la barra está anclada a la izquierda
-            RectTransform rt = combatTimerFill;
-            float maxWidth = 200f; // ⚠️ AJUSTA ESTO AL ANCHO MÁXIMO DE TU BARRA
-            rt.sizeDelta = new Vector2(maxWidth * ratio, rt.sizeDelta.y);
-
-            // Opción B: Si usas Scale (menos recomendado pero funciona)
-            // Vector3 scale = combatTimerFill.localScale;
-            // scale.x = Mathf.Clamp01(ratio);
-            // combatTimerFill.localScale = scale;
+            combatTimerFill.fillAmount = Mathf.Clamp01(ratio);
+            combatTimerFill.color = GetCombatColor(ratio);
         }
-
-        // Color (esto sí funciona con Image)
-        if (combatTimerImage != null)
-            combatTimerImage.color = GetCombatColor(ratio);
     }
 
     private Color GetCombatColor(float ratio)
@@ -130,8 +122,24 @@ public class HUDController : MonoBehaviour
             return colorWarning;
         else
         {
+            // Parpadeo en peligro
             float blink = Mathf.PingPong(Time.unscaledTime * blinkSpeed, 1f);
             return Color.Lerp(colorDanger, Color.white, blink * 0.3f);
+        }
+    }
+
+    /// <summary>
+    /// 🆕 Resetea la barra al estado inicial (llamar al reiniciar)
+    /// </summary>
+    public void ResetCombatTimer()
+    {
+        if (combatTimerPanel != null)
+            combatTimerPanel.SetActive(false);
+
+        if (combatTimerFill != null)
+        {
+            combatTimerFill.fillAmount = 1f;
+            combatTimerFill.color = colorSafe;
         }
     }
 
