@@ -50,7 +50,7 @@ public class LevelManager : MonoBehaviour
     private void Start()
     {
         if (GameTimer.Instance != null)
-            GameTimer.Instance.SetPaused(true);
+            GameTimer.Instance.StopTimer();
 
         StartCoroutine(InitialLoad());
     }

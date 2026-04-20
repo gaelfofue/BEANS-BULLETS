@@ -239,10 +239,14 @@ public class GameOverManager : MonoBehaviour
         waitingForInput = false;
         Debug.Log($"[RESTART] Reloading {mainSceneName}...");
 
-        // 🆕 Resetear HUD antes de recargar
-        HUDController hud = FindFirstObjectByType<HUDController>();
-        if (hud != null)
-            hud.ResetCombatTimer();
+        // 🆕 Resetear timer
+        if (GameTimer.Instance != null)
+            GameTimer.Instance.ResetTimer();
+
+        // 🆕 Resetear barra UI
+        TimerBarUI timerUI = FindFirstObjectByType<TimerBarUI>();
+        if (timerUI != null)
+            timerUI.ResetBar();
 
         Time.timeScale = 1f;
 

@@ -7,11 +7,6 @@ public class HUDController : MonoBehaviour
     [Header("Run Timer")]
     [SerializeField] private TextMeshProUGUI runTimerText;
 
-    [Header("Combat Timer Bar")]
-    [SerializeField] private GameObject combatTimerPanel;
-    [SerializeField] private Image combatTimerFill; // 🆕 Ahora es Image, no RectTransform
-    [SerializeField] private Image combatTimerBackground; // 🆕 Opcional: para el fondo
-
     [Header("Score")]
     [SerializeField] private TextMeshProUGUI scoreText;
 
@@ -27,36 +22,18 @@ public class HUDController : MonoBehaviour
     [SerializeField] private Image slotIcon2;
     [SerializeField] private Image slotIcon3;
 
-    [Header("Combat Timer Colors")]
-    [SerializeField] private Color colorSafe = new Color(0f, 1f, 0.255f, 1f); // 🆕 Alpha en 1
-    [SerializeField] private Color colorWarning = new Color(1f, 0.843f, 0f, 1f);
-    [SerializeField] private Color colorDanger = new Color(1f, 0f, 0.251f, 1f);
-
     [Header("Settings")]
-    [SerializeField] private float blinkSpeed = 4f;
     [SerializeField] private int roomsPerCycle = 3;
 
-    // Interno
     private int killCount = 0;
     private float runTimer = 0f;
     private bool runTimerPaused = false;
 
-    private void Start()
-    {
-        // 🆕 Inicializar barra correctamente
-        ResetCombatTimer();
-    }
-
     private void Update()
     {
         UpdateRunTimer();
-        UpdateCombatTimer();
         UpdateRoomProgress();
     }
-
-    // ==================
-    // RUN TIMER
-    // ==================
 
     private void UpdateRunTimer()
     {
@@ -83,70 +60,6 @@ public class HUDController : MonoBehaviour
         return runTimer;
     }
 
-    // ==================
-    // COMBAT TIMER (NUEVO MÉTODO)
-    // ==================
-
-    private void UpdateCombatTimer()
-    {
-        if (GameTimer.Instance == null)
-        {
-            if (combatTimerPanel != null)
-                combatTimerPanel.SetActive(false);
-            return;
-        }
-
-        bool isRunning = GameTimer.Instance.IsRunning();
-
-        // Mostrar/ocultar panel
-        if (combatTimerPanel != null)
-            combatTimerPanel.SetActive(isRunning);
-
-        if (!isRunning) return;
-
-        float ratio = GameTimer.Instance.GetTimePercent();
-
-        // 🆕 MÉTODO CORRECTO: fillAmount
-        if (combatTimerFill != null)
-        {
-            combatTimerFill.fillAmount = Mathf.Clamp01(ratio);
-            combatTimerFill.color = GetCombatColor(ratio);
-        }
-    }
-
-    private Color GetCombatColor(float ratio)
-    {
-        if (ratio > 0.6f)
-            return colorSafe;
-        else if (ratio > 0.3f)
-            return colorWarning;
-        else
-        {
-            // Parpadeo en peligro
-            float blink = Mathf.PingPong(Time.unscaledTime * blinkSpeed, 1f);
-            return Color.Lerp(colorDanger, Color.white, blink * 0.3f);
-        }
-    }
-
-    /// <summary>
-    /// 🆕 Resetea la barra al estado inicial (llamar al reiniciar)
-    /// </summary>
-    public void ResetCombatTimer()
-    {
-        if (combatTimerPanel != null)
-            combatTimerPanel.SetActive(false);
-
-        if (combatTimerFill != null)
-        {
-            combatTimerFill.fillAmount = 1f;
-            combatTimerFill.color = colorSafe;
-        }
-    }
-
-    // ==================
-    // SCORE
-    // ==================
-
     public void RegisterKill()
     {
         killCount++;
@@ -158,10 +71,6 @@ public class HUDController : MonoBehaviour
     {
         return killCount;
     }
-
-    // ==================
-    // ROOM PROGRESS
-    // ==================
 
     private void UpdateRoomProgress()
     {
@@ -177,19 +86,11 @@ public class HUDController : MonoBehaviour
             roundText.text = "ROUND " + round;
     }
 
-    // ==================
-    // AMMO
-    // ==================
-
     public void UpdateAmmo(int current, int max)
     {
         if (ammoText != null)
             ammoText.text = current + " / " + max;
     }
-
-    // ==================
-    // UPGRADES
-    // ==================
 
     public void SetUpgrade(int slot, Sprite icon)
     {

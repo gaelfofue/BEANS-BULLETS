@@ -3,43 +3,40 @@ using UnityEngine.Events;
 
 public class GameTimer : MonoBehaviour
 {
-    [Header("Timer Settings")]
-    public float maxTime = 30f;
-    public float startingTime = 30f;
+    public static GameTimer Instance { get; private set; }
+
+    [Header("Timer Configuration")]
+    [SerializeField] private float maxTime = 30f;
+    [SerializeField] private float drainSpeed = 1f;
 
     [Header("Time Rewards")]
-    public float timePerKill = 3f;
-    public float timePerHit = 0.5f;
+    [SerializeField] private float timePerKill = 3f;
+    [SerializeField] private float timePerHit = 0.5f;
 
-    [Header("Drain")]
-    public float drainSpeed = 1f;
-
-    [Header("State")]
+    [Header("State (Read Only)")]
     [SerializeField] private float currentTime;
-    private bool isRunning = false;
-    private bool isDead = false;
+    [SerializeField] private bool isRunning = false;
+    [SerializeField] private bool isDead = false;
 
     [Header("Events")]
     public UnityEvent onTimerStart;
-    public UnityEvent onTimerEnd;
-    public UnityEvent<float> onTimerChanged;
-
-    public static GameTimer Instance;
+    public UnityEvent onTimerStop;
+    public UnityEvent onTimerDeath;
+    public UnityEvent<float> onTimeChanged; // Envía ratio 0-1
 
     void Awake()
     {
-        if (Instance == null)
-            Instance = this;
-        else
+        if (Instance != null && Instance != this)
+        {
             Destroy(gameObject);
+            return;
+        }
+        Instance = this;
     }
 
     void Start()
     {
-        currentTime = startingTime;
-        // ✅ NO LLAMAR StartTimer() aquí
-        // El timer empieza pausado y se activa al entrar a la primera sala de combate
-        isRunning = false;
+        ResetTimer();
     }
 
     void Update()
@@ -47,81 +44,102 @@ public class GameTimer : MonoBehaviour
         if (!isRunning || isDead) return;
 
         currentTime -= drainSpeed * Time.deltaTime;
-        onTimerChanged?.Invoke(currentTime / maxTime);
 
-        if (currentTime <= 0)
+        if (currentTime < 0f)
+            currentTime = 0f;
+
+        float ratio = GetTimePercent();
+        onTimeChanged?.Invoke(ratio);
+
+        if (currentTime <= 0f && !isDead)
         {
-            currentTime = 0;
-            isDead = true;
-            onTimerEnd?.Invoke();
-
-            GameOverManager gom = FindFirstObjectByType<GameOverManager>();
-            if (gom != null)
-                gom.TriggerGameOver();
-            Debug.Log($"[TIMER] Time: {currentTime:F2} / {maxTime:F2} | Running: {isRunning} | Percent: {GetTimePercent():F2}");
+            Die();
         }
     }
 
     public void StartTimer()
     {
+        if (isDead) return;
         isRunning = true;
-        isDead = false;
         onTimerStart?.Invoke();
+        Debug.Log($"[TIMER] STARTED | Current: {currentTime:F1}s");
     }
 
-    public void PauseTimer() { isRunning = false; }
-
-    public void ResumeTimer()
+    public void StopTimer()
     {
-        if (isDead) return;
-        isRunning = true;
+        isRunning = false;
+        onTimerStop?.Invoke();
+        Debug.Log($"[TIMER] STOPPED | Frozen at: {currentTime:F1}s");
     }
 
-    public void SetPaused(bool paused)
+    public void ResetTimer()
     {
-        if (isDead) return;
-        isRunning = !paused;
+        currentTime = maxTime;
+        isDead = false;
+        isRunning = false;
+        onTimeChanged?.Invoke(1f);
+        Debug.Log($"[TIMER] RESET | Time: {currentTime:F1}s");
     }
 
     public void AddKillTime()
     {
         if (isDead) return;
-
-        float previousTime = currentTime;
-        currentTime += timePerKill;
-        currentTime = Mathf.Min(currentTime, maxTime);
-
-        Debug.Log($"[TIMER] AddKillTime: {previousTime:F1}s → {currentTime:F1}s (+{timePerKill}s)");
+        float before = currentTime;
+        currentTime = Mathf.Min(currentTime + timePerKill, maxTime);
+        Debug.Log($"[TIMER] KILL +{timePerKill}s | {before:F1}s → {currentTime:F1}s");
+        onTimeChanged?.Invoke(GetTimePercent());
     }
 
     public void AddHitTime()
     {
         if (isDead) return;
-        currentTime += timePerHit;
-        currentTime = Mathf.Min(currentTime, maxTime);
-    }
-
-    public void RemoveTime(float amount)
-    {
-        if (isDead) return;
-        currentTime -= amount;
-        if (currentTime < 0f) currentTime = 0f;
+        currentTime = Mathf.Min(currentTime + timePerHit, maxTime);
+        onTimeChanged?.Invoke(GetTimePercent());
     }
 
     public void AddCustomTime(float amount)
     {
         if (isDead) return;
-        currentTime += amount;
-        currentTime = Mathf.Min(currentTime, maxTime);
+        currentTime = Mathf.Min(currentTime + amount, maxTime);
+        onTimeChanged?.Invoke(GetTimePercent());
     }
 
-    public void SetTimePerKill(float value) { timePerKill = value; }
-    public void SetTimePerHit(float value) { timePerHit = value; }
-    public void SetDrainSpeed(float value) { drainSpeed = value; }
-    public void SetMaxTime(float value) { maxTime = value; }
+    public void RemoveTime(float amount)
+    {
+        if (isDead) return;
+        currentTime = Mathf.Max(currentTime - amount, 0f);
+        onTimeChanged?.Invoke(GetTimePercent());
+    }
 
-    public float GetTimePercent() { return currentTime / maxTime; }
-    public float GetCurrentTime() { return currentTime; }
-    public bool IsDead() { return isDead; }
-    public bool IsRunning() { return isRunning; }
+    public void SetMaxTime(float newMax)
+    {
+        float ratio = GetTimePercent();
+        maxTime = newMax;
+        currentTime = ratio * maxTime;
+        Debug.Log($"[TIMER] MaxTime changed to {maxTime}s | Current: {currentTime:F1}s");
+        onTimeChanged?.Invoke(ratio);
+    }
+
+    public void SetDrainSpeed(float speed) => drainSpeed = speed;
+    public void SetTimePerKill(float time) => timePerKill = time;
+    public void SetTimePerHit(float time) => timePerHit = time;
+
+    public float GetCurrentTime() => currentTime;
+    public float GetMaxTime() => maxTime;
+    public float GetTimePercent() => maxTime > 0 ? currentTime / maxTime : 0f;
+    public bool IsRunning() => isRunning;
+    public bool IsDead() => isDead;
+
+    private void Die()
+    {
+        isDead = true;
+        isRunning = false;
+        currentTime = 0f;
+        onTimerDeath?.Invoke();
+        Debug.Log("[TIMER] DEATH");
+
+        GameOverManager gom = FindFirstObjectByType<GameOverManager>();
+        if (gom != null)
+            gom.TriggerGameOver();
+    }
 }

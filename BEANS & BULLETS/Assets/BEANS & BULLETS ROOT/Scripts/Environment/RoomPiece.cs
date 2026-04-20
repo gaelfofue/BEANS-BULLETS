@@ -26,6 +26,10 @@ public class RoomPiece : MonoBehaviour
     private bool activated;
     private bool completed;
 
+    // ==================
+    // INITIALIZATION
+    // ==================
+
     public void Initialize()
     {
         if (pieceType == PieceType.Combat || pieceType == PieceType.Shop)
@@ -37,43 +41,58 @@ public class RoomPiece : MonoBehaviour
         }
     }
 
+    // ==================
+    // ACTIVATION (cuando el player entra)
+    // ==================
+
     public void Activate()
     {
         if (activated) return;
         activated = true;
 
+        if (entryDoor != null)
+            entryDoor.SetState(Door.DoorState.Locked);
+
+        if (exitDoor != null)
+            exitDoor.SetState(Door.DoorState.Locked);
+
         if (pieceType == PieceType.Combat)
         {
-            if (entryDoor != null)
-                entryDoor.SetState(Door.DoorState.Locked);
-            if (exitDoor != null)
-                exitDoor.SetState(Door.DoorState.Locked);
-
-            // ✅ Activar timer al entrar a sala de combate
+            // Iniciar timer
             if (GameTimer.Instance != null)
             {
-                GameTimer.Instance.SetPaused(false);
+                GameTimer.Instance.StartTimer();
                 Debug.Log("[ROOM] Combat timer STARTED");
             }
 
             SpawnEnemies();
         }
-        else if (pieceType == PieceType.Corridor)
-        {
-            if (GameTimer.Instance != null)
-                GameTimer.Instance.SetPaused(true);
-        }
         else if (pieceType == PieceType.Shop)
         {
-            if (entryDoor != null)
-                entryDoor.SetState(Door.DoorState.Locked);
-            if (exitDoor != null)
-                exitDoor.SetState(Door.DoorState.Locked);
-
+            // Pausar timer en tienda
             if (GameTimer.Instance != null)
-                GameTimer.Instance.SetPaused(true);
+            {
+                GameTimer.Instance.StopTimer();
+                Debug.Log("[ROOM] Timer PAUSED (Shop)");
+            }
+
+            if (ShopManager.Instance != null)
+                ShopManager.Instance.SetCurrentShopRoom(this);
+        }
+        else if (pieceType == PieceType.Corridor)
+        {
+            // Pausar timer en pasillo
+            if (GameTimer.Instance != null)
+            {
+                GameTimer.Instance.StopTimer();
+                Debug.Log("[ROOM] Timer PAUSED (Corridor)");
+            }
         }
     }
+
+    // ==================
+    // ENEMY SPAWNING
+    // ==================
 
     private void SpawnEnemies()
     {
@@ -100,6 +119,10 @@ public class RoomPiece : MonoBehaviour
         }
     }
 
+    // ==================
+    // ENEMY DEATH
+    // ==================
+
     public void OnEnemyDied(EnemyHealth enemy)
     {
         activeEnemies.Remove(enemy);
@@ -107,17 +130,20 @@ public class RoomPiece : MonoBehaviour
 
         if (activeEnemies.Count <= 0)
         {
-            // ✅ Pequeño delay antes de pausar el timer
-            // Para que el player vea el tiempo añadido
             StartCoroutine(DelayedComplete());
         }
     }
 
     private IEnumerator DelayedComplete()
     {
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.2f);
+
         Complete();
     }
+
+    // ==================
+    // COMPLETION
+    // ==================
 
     private void Complete()
     {
@@ -126,15 +152,26 @@ public class RoomPiece : MonoBehaviour
 
         Debug.Log("[ROOM] Combat CLEARED");
 
+        // Pausar timer
         if (GameTimer.Instance != null)
-            GameTimer.Instance.SetPaused(true);
+        {
+            GameTimer.Instance.StopTimer();
+            Debug.Log("[ROOM] Timer STOPPED");
+        }
 
         if (exitDoor != null)
             exitDoor.SetState(Door.DoorState.Closed);
 
         if (LevelManager.Instance != null)
             LevelManager.Instance.OnRoomCompleted();
+
+        if (exitDoor != null)
+            exitDoor.SetState(Door.DoorState.Open);
     }
+
+    // ==================
+    // SHOP INTERACTION
+    // ==================
 
     public void OnShopInteractionComplete()
     {
@@ -152,11 +189,19 @@ public class RoomPiece : MonoBehaviour
         Debug.Log("[SHOP] Interaction complete. Exit door unlocked.");
     }
 
+    // ==================
+    // CLEANUP
+    // ==================
+
     public void PrepareForUnload()
     {
         if (exitDoor != null)
             exitDoor.SetState(Door.DoorState.Locked);
     }
+
+    // ==================
+    // GETTERS
+    // ==================
 
     public Transform GetEntryPoint() { return entryPoint; }
     public Transform GetExitPoint() { return exitPoint; }
