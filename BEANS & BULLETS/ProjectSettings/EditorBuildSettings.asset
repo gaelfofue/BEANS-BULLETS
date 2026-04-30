@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/BEANS & BULLETS ROOT/Scenes/SNC_Menu.unity
+    guid: e6753bb3e636a3341b925e3ccceb5758
+  - enabled: 1
     path: Assets/BEANS & BULLETS ROOT/Scenes/SCN_Play.unity
     guid: 7fdbbbe08b9d03e4d85709ec2d93d1e2
   - enabled: 1
