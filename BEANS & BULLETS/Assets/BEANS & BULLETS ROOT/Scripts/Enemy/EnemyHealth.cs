@@ -9,6 +9,8 @@ public class EnemyHealth : MonoBehaviour
     [Header("Feedback")]
     [SerializeField] Material damagedMat;
     [SerializeField] GameObject deathVFX;
+    [SerializeField] AudioClip deathSound;
+    [SerializeField] float deathVolume = 3f;
     [SerializeField] MeshRenderer enemyRend;
     [SerializeField] float deathShakeIntensity = 0.12f;
     [SerializeField] float deathShakeDuration = 0.1f;
@@ -67,6 +69,11 @@ public class EnemyHealth : MonoBehaviour
             deathVFX.transform.position = transform.position;
             deathVFX.SetActive(true);
             Destroy(deathVFX, 3f);
+        }
+
+        if (deathSound != null)
+        {
+            AudioSource.PlayClipAtPoint(deathSound, transform.position, deathVolume);
         }
 
         // Timer

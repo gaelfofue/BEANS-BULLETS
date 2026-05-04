@@ -30,7 +30,8 @@ public class LoadingManager : MonoBehaviour
 
     IEnumerator LoadAsync(string sceneName)
     {
-        loadingScreen.SetActive(true);
+        if (loadingScreen != null)
+            loadingScreen.SetActive(true);
 
         AsyncOperation op = SceneManager.LoadSceneAsync(sceneName);
         op.allowSceneActivation = false;
@@ -42,9 +43,6 @@ public class LoadingManager : MonoBehaviour
             if (progressText != null) progressText.text = Mathf.Round(progress * 100) + "%";
             yield return null;
         }
-
-        if (progressBar != null) progressBar.value = 1f;
-        if (progressText != null) progressText.text = "100%";
 
         yield return new WaitForSeconds(0.5f);
         op.allowSceneActivation = true;

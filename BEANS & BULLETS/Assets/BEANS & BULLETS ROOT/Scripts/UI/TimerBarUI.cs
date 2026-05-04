@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Collections;
 
 public class TimerBarUI : MonoBehaviour
 {
@@ -24,38 +23,24 @@ public class TimerBarUI : MonoBehaviour
 
     private bool isBlinking = false;
 
+    void Awake()
+    {
+        SetupFillImage();
+        ResetBarImmediate();
+
+        if (hideWhenPaused && barPanel != null)
+            barPanel.SetActive(false);
+    }
+
     void Start()
     {
-        if (fillImage != null)
-        {
-            fillImage.type = Image.Type.Filled;
-            fillImage.fillMethod = Image.FillMethod.Horizontal;
-            fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
-        }
-
-        if (GameTimer.Instance != null)
-        {
-            GameTimer.Instance.onTimeChanged.AddListener(UpdateBar);
-            GameTimer.Instance.onTimerStart.AddListener(OnTimerStart);
-            GameTimer.Instance.onTimerStop.AddListener(OnTimerStop);
-            GameTimer.Instance.onTimerDeath.AddListener(OnTimerDeath);
-        }
-
-        ResetBar();
-
-        if (hideWhenPaused)
-            barPanel?.SetActive(false);
+        SubscribeToTimer();
+        SyncFromTimer();
     }
 
     void OnDestroy()
     {
-        if (GameTimer.Instance != null)
-        {
-            GameTimer.Instance.onTimeChanged.RemoveListener(UpdateBar);
-            GameTimer.Instance.onTimerStart.RemoveListener(OnTimerStart);
-            GameTimer.Instance.onTimerStop.RemoveListener(OnTimerStop);
-            GameTimer.Instance.onTimerDeath.RemoveListener(OnTimerDeath);
-        }
+        UnsubscribeFromTimer();
     }
 
     void Update()
@@ -66,7 +51,6 @@ public class TimerBarUI : MonoBehaviour
             fillImage.color = Color.Lerp(colorDanger, Color.white, blink * 0.4f);
         }
 
-        // Actualizar texto
         if (timerText != null && GameTimer.Instance != null)
         {
             int seconds = Mathf.CeilToInt(GameTimer.Instance.GetCurrentTime());
@@ -74,10 +58,72 @@ public class TimerBarUI : MonoBehaviour
         }
     }
 
+    private void SetupFillImage()
+    {
+        if (fillImage == null) return;
+
+        fillImage.type = Image.Type.Filled;
+        fillImage.fillMethod = Image.FillMethod.Horizontal;
+        fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
+
+        // Esto evita que arranque visualmente negro
+        fillImage.fillAmount = 1f;
+        fillImage.color = colorSafe;
+    }
+
+    private void SubscribeToTimer()
+    {
+        if (GameTimer.Instance == null) return;
+
+        GameTimer.Instance.onTimeChanged.AddListener(UpdateBar);
+        GameTimer.Instance.onTimerStart.AddListener(OnTimerStart);
+        GameTimer.Instance.onTimerStop.AddListener(OnTimerStop);
+        GameTimer.Instance.onTimerDeath.AddListener(OnTimerDeath);
+    }
+
+    private void UnsubscribeFromTimer()
+    {
+        if (GameTimer.Instance == null) return;
+
+        GameTimer.Instance.onTimeChanged.RemoveListener(UpdateBar);
+        GameTimer.Instance.onTimerStart.RemoveListener(OnTimerStart);
+        GameTimer.Instance.onTimerStop.RemoveListener(OnTimerStop);
+        GameTimer.Instance.onTimerDeath.RemoveListener(OnTimerDeath);
+    }
+
+    private void SyncFromTimer()
+    {
+        if (GameTimer.Instance == null)
+        {
+            ResetBarImmediate();
+            return;
+        }
+
+        float ratio = GameTimer.Instance.GetTimePercent();
+        UpdateBar(ratio);
+
+        if (timerText != null)
+        {
+            int seconds = Mathf.CeilToInt(GameTimer.Instance.GetCurrentTime());
+            timerText.text = seconds.ToString();
+        }
+
+        if (barPanel != null)
+        {
+            bool shouldShow = !hideWhenPaused || GameTimer.Instance.IsRunning();
+            barPanel.SetActive(shouldShow);
+        }
+
+        if (GameTimer.Instance.IsDead())
+            OnTimerDeath();
+    }
+
     private void OnTimerStart()
     {
         if (barPanel != null)
             barPanel.SetActive(true);
+
+        SyncFromTimer();
     }
 
     private void OnTimerStop()
@@ -86,6 +132,7 @@ public class TimerBarUI : MonoBehaviour
             barPanel.SetActive(false);
 
         isBlinking = false;
+        SyncFromTimer();
     }
 
     private void OnTimerDeath()
@@ -103,7 +150,8 @@ public class TimerBarUI : MonoBehaviour
     {
         if (fillImage == null) return;
 
-        fillImage.fillAmount = Mathf.Clamp01(ratio);
+        ratio = Mathf.Clamp01(ratio);
+        fillImage.fillAmount = ratio;
 
         if (ratio > 0.6f)
         {
@@ -117,11 +165,12 @@ public class TimerBarUI : MonoBehaviour
         }
         else
         {
+            fillImage.color = colorDanger;
             isBlinking = true;
         }
     }
 
-    public void ResetBar()
+    private void ResetBarImmediate()
     {
         if (fillImage != null)
         {
@@ -129,9 +178,15 @@ public class TimerBarUI : MonoBehaviour
             fillImage.color = colorSafe;
         }
 
-        isBlinking = false;
+        if (timerText != null && GameTimer.Instance != null)
+        {
+            timerText.text = Mathf.CeilToInt(GameTimer.Instance.GetCurrentTime()).ToString();
+        }
 
-        if (hideWhenPaused && barPanel != null)
-            barPanel.SetActive(false);
+        isBlinking = false;
+    }
+    public void ResetBar() //Perezon cambiar todo el script nuevamente solo porque el script de muerte ya no contecta con esto
+    {
+        ResetBarImmediate();
     }
 }

@@ -10,9 +10,11 @@ public class MenuManager : MonoBehaviour
     public Button[] menuButtons;
     public TextMeshProUGUI[] buttonTexts;
 
-    [Header("Panel de descripción")]
-    public TextMeshProUGUI descriptionText;
-    public TextMeshProUGUI infoText; // Texto inicial cuando nada está seleccionado
+    [Header("Paneles de texto")]
+    public GameObject panelInicio;
+    public GameObject panelPlay;
+    public GameObject panelSettings;
+    public GameObject panelExit;
 
     [Header("Descripciones por botón")]
     public string[] descriptions = {
@@ -44,8 +46,10 @@ public class MenuManager : MonoBehaviour
 
         // Estado inicial: nada seleccionado
         SetAllNormal();
-        descriptionText.text = "";
-        infoText.gameObject.SetActive(true);
+        panelInicio.SetActive(true);
+        panelPlay.SetActive(false);
+        panelSettings.SetActive(false);
+        panelExit.SetActive(false);
     }
 
     void Update()
@@ -55,7 +59,7 @@ public class MenuManager : MonoBehaviour
         if (!menuActive && (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow)))
         {
             menuActive = true;
-            infoText.gameObject.SetActive(false);
+            panelInicio.gameObject.SetActive(false);
             SetIndex(0);
             return;
         }
@@ -77,13 +81,15 @@ public class MenuManager : MonoBehaviour
         SetAllNormal();
         currentIndex = index;
 
-        // Resaltar seleccionado
         var colors = menuButtons[index].colors;
         colors.normalColor = selectedBG;
         menuButtons[index].colors = colors;
         buttonTexts[index].color = selectedText;
 
-        descriptionText.text = descriptions[index];
+        // Desactiva todos y activa el correcto
+        panelPlay.SetActive(index == 0);
+        panelSettings.SetActive(index == 1);
+        panelExit.SetActive(index == 2);
 
         PlaySound(navigateSound);
     }

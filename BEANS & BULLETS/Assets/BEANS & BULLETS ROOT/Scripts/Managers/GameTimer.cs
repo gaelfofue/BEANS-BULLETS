@@ -22,7 +22,7 @@ public class GameTimer : MonoBehaviour
     public UnityEvent onTimerStart;
     public UnityEvent onTimerStop;
     public UnityEvent onTimerDeath;
-    public UnityEvent<float> onTimeChanged; // Envía ratio 0-1
+    public UnityEvent<float> onTimeChanged;
 
     void Awake()
     {
@@ -31,12 +31,20 @@ public class GameTimer : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+
         Instance = this;
+
+        // Inicialización temprana
+        currentTime = maxTime;
+        isRunning = false;
+        isDead = false;
     }
 
     void Start()
     {
-        ResetTimer();
+        // Forzar sincronización inicial con la UI
+        onTimeChanged?.Invoke(GetTimePercent());
+        Debug.Log($"[TIMER] INIT | Time: {currentTime:F1}s");
     }
 
     void Update()
@@ -62,6 +70,7 @@ public class GameTimer : MonoBehaviour
         if (isDead) return;
         isRunning = true;
         onTimerStart?.Invoke();
+        onTimeChanged?.Invoke(GetTimePercent());
         Debug.Log($"[TIMER] STARTED | Current: {currentTime:F1}s");
     }
 
@@ -69,6 +78,7 @@ public class GameTimer : MonoBehaviour
     {
         isRunning = false;
         onTimerStop?.Invoke();
+        onTimeChanged?.Invoke(GetTimePercent());
         Debug.Log($"[TIMER] STOPPED | Frozen at: {currentTime:F1}s");
     }
 
@@ -117,7 +127,7 @@ public class GameTimer : MonoBehaviour
         maxTime = newMax;
         currentTime = ratio * maxTime;
         Debug.Log($"[TIMER] MaxTime changed to {maxTime}s | Current: {currentTime:F1}s");
-        onTimeChanged?.Invoke(ratio);
+        onTimeChanged?.Invoke(GetTimePercent());
     }
 
     public void SetDrainSpeed(float speed) => drainSpeed = speed;

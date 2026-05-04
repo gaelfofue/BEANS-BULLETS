@@ -255,12 +255,8 @@ public class GameOverManager : MonoBehaviour
 
     private void QuitGame()
     {
-        Debug.Log("[QUIT] Exiting...");
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
+        Time.timeScale = 1f;
+        SceneManager.LoadScene("SNC_Menu");
     }
 
     // 🗑️ ELIMINADO: FullRestart con lógica innecesaria

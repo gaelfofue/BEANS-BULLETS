@@ -1,6 +1,6 @@
-﻿using System.Collections;
+﻿using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class LevelManager : MonoBehaviour
@@ -18,8 +18,15 @@ public class LevelManager : MonoBehaviour
     [Header("SHOP FREQUENCY")]
     [SerializeField] private int shopEveryXRooms = 3;
 
+    [Header("ENEMY SCALING")]
+    [SerializeField] private int baseEnemies = 1;
+    [SerializeField] private int extraEnemiesPerRoom = 1;     // Cada X salas suma 1 enemigo
+    [SerializeField] private int roomsPerEnemyIncrease = 2;   // Cada cuántas salas sube
+    [SerializeField] private int extraEnemiesPerShop = 1;     // Bonus por cada tienda visitada
+    [SerializeField] private int maxEnemiesPerRoom = 8;       // Tope máximo
+
     [Header("TIMING")]
-    [SerializeField] private float unloadDelay = 1.2f; // Tiempo para que las puertas se cierren
+    [SerializeField] private float unloadDelay = 1.2f;
 
     // Todas las piezas en orden
     private List<Piece> pieces = new List<Piece>();
@@ -32,7 +39,8 @@ public class LevelManager : MonoBehaviour
     private bool isLoading;
     private bool nextIsRoom = true;
     private int roomsCompleted;
-    private int combatRoomsSinceLastShop = 0; // Contador SOLO de salas combat
+    private int shopsVisited = 0;
+    private int combatRoomsSinceLastShop = 0;
     private string lastRoom = "";
     private string lastCorridor = "";
 
@@ -53,6 +61,32 @@ public class LevelManager : MonoBehaviour
             GameTimer.Instance.StopTimer();
 
         StartCoroutine(InitialLoad());
+    }
+
+    // ============================
+    // ENEMY SCALING
+    // ============================
+
+    /// <summary>
+    /// Calcula cuántos enemigos debe tener la sala actual
+    /// </summary>
+    public int CalculateEnemyCount()
+    {
+        // Base + incremento por salas completadas + bonus por tiendas
+        int fromRooms = 0;
+        if (roomsPerEnemyIncrease > 0)
+        {
+            fromRooms = (roomsCompleted / roomsPerEnemyIncrease) * extraEnemiesPerRoom;
+        }
+
+        int fromShops = shopsVisited * extraEnemiesPerShop;
+
+        int total = baseEnemies + fromRooms + fromShops;
+        total = Mathf.Clamp(total, 1, maxEnemiesPerRoom);
+
+        Debug.Log($"[SCALING] Enemies: {total} (base:{baseEnemies} + rooms:{fromRooms} [{roomsCompleted} completed] + shops:{fromShops} [{shopsVisited} visited]) | Max:{maxEnemiesPerRoom}");
+
+        return total;
     }
 
     // ============================
@@ -121,13 +155,10 @@ public class LevelManager : MonoBehaviour
         Debug.Log($"ROOM COMPLETED Total: {roomsCompleted}");
     }
 
-    /// <summary>
-    /// Llamado por la tienda cuando el player termina de comprar o decide irse.
-    /// </summary>
     public void OnShopCompleted()
     {
-        Debug.Log("SHOP COMPLETED");
-        // No incrementamos roomsCompleted porque la tienda no es combate
+        shopsVisited++;
+        Debug.Log($"SHOP COMPLETED Total shops visited: {shopsVisited}");
     }
 
     // ============================
@@ -136,13 +167,8 @@ public class LevelManager : MonoBehaviour
 
     private IEnumerator OnEnteredRoom()
     {
-        // Esperar a que las puertas se cierren visualmente
         yield return new WaitForSeconds(unloadDelay);
-
-        // Descargar todo lo anterior al player
         yield return StartCoroutine(UnloadBehindPlayer());
-
-        // Rellenar buffer: asegurar 2 piezas por delante
         yield return StartCoroutine(FillBuffer());
     }
 
@@ -191,6 +217,7 @@ public class LevelManager : MonoBehaviour
             yield return null;
 
         yield return null;
+        yield return null;
 
         Scene newScene = FindNewScene(sceneName);
 
@@ -233,12 +260,39 @@ public class LevelManager : MonoBehaviour
         foreach (GameObject root in roots)
             root.transform.position += moveOffset;
 
+        // Esperar después de mover
+        yield return new WaitForFixedUpdate();
+
         // NavMesh
         foreach (GameObject root in roots)
         {
             var surfaces = root.GetComponentsInChildren<Unity.AI.Navigation.NavMeshSurface>();
             foreach (var s in surfaces)
+            {
                 s.BuildNavMesh();
+                Debug.Log($"[LEVEL] NavMesh baked for {root.name}");
+            }
+        }
+
+        yield return null;
+        yield return null;
+        yield return new WaitForFixedUpdate();
+
+        // Verificar NavMesh
+        UnityEngine.AI.NavMeshHit testHit;
+        Vector3 testPos = piece.GetEntryPoint().position;
+        bool navMeshValid = UnityEngine.AI.NavMesh.SamplePosition(testPos, out testHit, 20f, UnityEngine.AI.NavMesh.AllAreas);
+        Debug.Log($"[LEVEL] NavMesh validation at {testPos}: {(navMeshValid ? $"OK → {testHit.position}" : "FAILED")}");
+
+        // Avisar NavMesh listo
+        piece.SetNavMeshReady();
+
+        // Configurar enemigos dinámicamente ANTES de Initialize
+        if (piece.GetPieceType() == RoomPiece.PieceType.Combat)
+        {
+            int enemyCount = CalculateEnemyCount();
+            piece.SetEnemyCount(enemyCount);
+            Debug.Log($"[LEVEL] Room {piece.gameObject.name} set to {enemyCount} enemies");
         }
 
         // Actualizar conexión
@@ -325,7 +379,6 @@ public class LevelManager : MonoBehaviour
 
     private string PickNextRoom()
     {
-        // ¿Toca tienda?
         if (shopScenes.Length > 0 && combatRoomsSinceLastShop >= shopEveryXRooms)
         {
             combatRoomsSinceLastShop = 0;
@@ -333,7 +386,6 @@ public class LevelManager : MonoBehaviour
             return shopScenes[Random.Range(0, shopScenes.Length)];
         }
 
-        // Es combat, incrementar aquí
         combatRoomsSinceLastShop++;
         Debug.Log($"[LEVEL] Picking COMBAT (sinceShop: {combatRoomsSinceLastShop}/{shopEveryXRooms})");
         return PickRandom(combatScenes, ref lastRoom);
@@ -362,6 +414,7 @@ public class LevelManager : MonoBehaviour
     }
 
     public int GetRoomsCompleted() { return roomsCompleted; }
+    public int GetShopsVisited() { return shopsVisited; }
 
     // ============================
     // DATA

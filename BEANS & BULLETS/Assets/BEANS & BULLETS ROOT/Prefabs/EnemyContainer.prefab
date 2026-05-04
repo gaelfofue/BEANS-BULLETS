@@ -302,8 +302,10 @@ MonoBehaviour:
   health: 0
   damagedMat: {fileID: 2100000, guid: 33617448123cfd24c9d7eec27703dfc1, type: 2}
   deathVFX: {fileID: 7073067154317136502, guid: 1b68529692ef0914880d438a258c66f4, type: 3}
+  deathSound: {fileID: 8300000, guid: 87eaf8a1aff09a14a8c7140a56c6fb34, type: 3}
+  deathVolume: 10
   enemyRend: {fileID: 2545937859754676616}
-  deathShakeIntensity: 0.5
+  deathShakeIntensity: 1
   deathShakeDuration: 0.3
 --- !u!114 &2804794944875950959
 MonoBehaviour:
@@ -331,7 +333,7 @@ MonoBehaviour:
   projectileDamage: 2.5
   projectileGravity: 0
   sightRange: 10
-  attackRange: 4
+  attackRange: 8
   tooCloseRange: 4
   chaseSpeed: 4
   retreatSpeed: 5
@@ -403,6 +405,10 @@ PrefabInstance:
       propertyPath: m_ConstrainProportionsScale
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: e7c7c6a4878d70b48a983449cc7a765a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 72d64b8499fcd0043bdaa401b349b0af, type: 2}
     - target: {fileID: 919132149155446097, guid: e7c7c6a4878d70b48a983449cc7a765a, type: 3}
       propertyPath: m_Name
       value: EnemyBEANS&GUNS
@@ -480,11 +486,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8731590409615808120, guid: 1b68529692ef0914880d438a258c66f4, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 8731590409615808120, guid: 1b68529692ef0914880d438a258c66f4, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 8731590409615808120, guid: 1b68529692ef0914880d438a258c66f4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x

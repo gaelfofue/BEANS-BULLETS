@@ -80,7 +80,7 @@ public class GunRecoil : MonoBehaviour
         targetRecoil = Mathf.Lerp(targetRecoil, 0f, Time.deltaTime * recoilReturn);
         currentRecoil = Mathf.Lerp(currentRecoil, targetRecoil, Time.deltaTime * recoilSnap);
 
-        Quaternion kickRot = Quaternion.AngleAxis(-currentRecoil, Vector3.right);
+        Quaternion kickRot = Quaternion.AngleAxis(-currentRecoil, Vector3.down);
 
         // === RELOAD SPIN ===
         if (isReloading)
@@ -108,9 +108,9 @@ public class GunRecoil : MonoBehaviour
 
             // Combinar rotaciones
             Quaternion spinRot = Quaternion.Euler(
-                spinAmount,
-                tiltY,
-                tiltX + overshoot
+            tiltX + overshoot,
+            -spinAmount,
+            tiltY
             );
 
             // Posición en arco
