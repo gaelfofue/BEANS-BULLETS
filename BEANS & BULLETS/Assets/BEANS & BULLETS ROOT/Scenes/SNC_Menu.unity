@@ -1376,8 +1376,8 @@ MonoBehaviour:
 
     > They''re just beans.
 
-    >
-    It isn''t that big of a deal.
+    > It
+    isn''t that big of a deal.
 
     >
 
@@ -2037,15 +2037,14 @@ MonoBehaviour:
 
     >
 
-    >
-    You better be quick.
+    > You
+    better be quick.
 
     > And precise.
 
     >
 
-    > > Press [E] to deploy
-    _'
+    > > Press [E] to deploy _'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0b4a87a4f0c29e545bea6eb8555afacb, type: 2}
   m_sharedMaterial: {fileID: -8107605990052289013, guid: 0b4a87a4f0c29e545bea6eb8555afacb, type: 2}
@@ -2842,7 +2841,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 17}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1792833436
